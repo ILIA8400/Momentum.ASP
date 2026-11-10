@@ -1,0 +1,138 @@
+@model ImportVm
+@{
+    ViewData["Title"] = "ورود از اکسل";
+    var r = Model.Result;
+}
+<div class="card">
+    <div class="card-head"><h2>@Html.Raw(Svg.Ic("sheet")) ورود دسته‌ای از اکسل</h2></div>
+    <div class="steps">
+        <div class="step">
+            <span class="num">۱</span>
+            <div>
+                <b>قالب رو دانلود کن</b>
+                <div class="sub">فایل اکسل با سرستون‌های درست و لیست درس‌ها. شیت «راهنما» داخلش توضیح هر ستون و نمونه داره.</div>
+                <div class="row" style="margin-top:8px">
+                    <a class="btn primary sm" href="/Import/Template">@Html.Raw(Svg.Ic("download", "sm")) دانلود قالب خالی</a>
+                    <a class="btn sm" href="/Import/Sample">@Html.Raw(Svg.Ic("sheet", "sm")) دانلود نمونهٔ پرشده (۳ ردیف)</a>
+                </div>
+            </div>
+        </div>
+        <div class="step">
+            <span class="num">۲</span>
+            <div>
+                <b>برنامه‌های قبلی‌ت رو توش بریز</b>
+                <div class="sub">فقط <b>تاریخ</b>، <b>درس</b> و <b>مدت</b> اجباری‌اند. تاریخ شمسی مثل <code>1405/06/27</code>، درس دقیقاً از لیست کشویی، مدت به دقیقه (<code>180</code>) یا ساعت:دقیقه (<code>3:00</code>). شیت «راهنما» داخل فایل توضیح هر ستون رو داره؛ اگه مطمئن نیستی، «نمونهٔ پرشده» رو ببین و مثل اون بنویس.</div>
+            </div>
+        </div>
+        <div class="step">
+            <span class="num">۳</span>
+            <div>
+                <b>فایل رو برگردون</b>
+                <div class="sub">بررسی می‌کنم؛ اگه قالب یا ردیفی مشکل داشته باشه می‌گم. چیزی اضافه نمی‌شه تا خودت تأیید کنی.</div>
+                <form method="post" enctype="multipart/form-data" asp-controller="Import" asp-action="Analyze" style="margin-top:8px">
+                    <label class="btn sm">@Html.Raw(Svg.Ic("upload", "sm")) انتخاب فایل (xlsx یا csv)
+                        <input type="file" name="file" accept=".xlsx,.csv" hidden onchange="this.form.submit()">
+                    </label>
+                    <span class="muted">@(Model.FileName)</span>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (r != null)
+{
+    var dup = r.Rows.Count(x => x.Ok && x.Warnings.Any(w => w.Contains("تکراری")));
+    <div class="card">
+        <div class="card-head">
+            <h2>@Html.Raw(Svg.Ic("list")) پیش‌نمایش</h2>
+            <span class="spacer"></span>
+            <span class="tag done">@Fa.D(r.OkCount) معتبر</span>
+            @if (r.BadCount > 0)
+            {
+                <span class="tag pct bad">@Fa.D(r.BadCount) خطا</span>
+            }
+            @if (dup > 0)
+            {
+                <span class="tag pending">@Fa.D(dup) احتمالاً تکراری</span>
+            }
+        </div>
+        @if (r.BadCount > 0)
+        {
+            <div class="warn-box">@Html.Raw(Svg.Ic("alert", "sm")) ردیف‌های قرمز اضافه نمی‌شن. توی اکسل درستشون کن و دوباره فایل رو بده، یا فقط ردیف‌های معتبر رو اضافه کن.</div>
+        }
+        @if (dup > 0)
+        {
+            <div class="warn-box">@Html.Raw(Svg.Ic("help", "sm")) ردیف‌های زرد قبلاً با همین تاریخ/درس/مدت/شرح توی اپ هستن؛ پیش‌فرض تیک ندارن. اگه واقعاً جدا هستن تیک بزن.</div>
+        }
+        <form method="post" asp-controller="Import" asp-action="Commit">
+            <input type="hidden" name="key" value="@Model.PreviewKey" />
+            <div class="imp-table-wrap">
+                <table class="imp-table">
+                    <tr>
+                        <th><input type="checkbox" id="impAll" title="همه"></th>
+                        <th>#</th><th>تاریخ</th><th>درس</th><th>بازه</th><th>مدت</th><th>خ/م/ت</th>
+                        <th>تست</th><th>درصد</th><th>شرح</th><th>وضعیت</th><th>نتیجهٔ بررسی</th>
+                    </tr>
+                    @foreach (var x in r.Rows)
+                    {
+                        var cls = x.Ok ? (x.Warnings.Count > 0 ? "warn" : "ok") : "bad";
+                        var isDup = x.Ok && x.Warnings.Any(w => w.Contains("تکراری"));
+                        <tr class="@cls">
+                            <td>
+                                @if (x.Ok)
+                                {
+                                    <input type="checkbox" name="selected" value="@x.Row" checked="@(!isDup)">
+                                }
+                            </td>
+                            <td class="num muted">@Fa.D(x.Row)</td>
+                            <td class="num">@(x.Date != null ? Fa.FmtShort(x.Date) : "؟")</td>
+                            <td>
+                                @if (x.SubjectId != null)
+                                {
+                                    <span class="subj-name"><span class="dot" style="background:@x.Color"></span>@(x.SubjectName)</span>
+                                }
+                                else
+                                {
+                                    <span style="color:var(--danger)">@(x.SubjectName)</span>
+                                }
+                            </td>
+                            <td class="num">@(x.StartTime != "" ? Fa.TimeFa(x.StartTime) + (x.EndTime != "" ? "–" + Fa.TimeFa(x.EndTime) : "") : "—")</td>
+                            <td class="num"><b>@(x.Minutes > 0 ? Fa.Hm(x.Minutes) : "—")</b></td>
+                            <td class="num">@((x.StudyMin > 0 || x.ReviewMin > 0 || x.TestMin > 0) ? $"{Fa.D(x.StudyMin)}/{Fa.D(x.ReviewMin)}/{Fa.D(x.TestMin)}" : "—")</td>
+                            <td class="num">@(x.Tests > 0 ? Fa.D(x.Tests) + ((x.Correct + x.Wrong > 0) ? $" ({Fa.D(x.Correct)}✓ {Fa.D(x.Wrong)}✗)" : "") : "—")</td>
+                            <td class="num">
+                                @{
+                                    var p = (x.Tests > 0 && x.Correct + x.Wrong > 0) ? Fa.PercentOf(x.Correct, x.Wrong, x.Tests) : null;
+                                }
+                                @(p != null ? Html.Raw($"<span class=\"tag pct {(p >= 50 ? "good" : p < 20 ? "bad" : "")}\">{Fa.D(p)}٪</span>") : Html.Raw("—"))
+                            </td>
+                            <td class="note">@(string.IsNullOrEmpty(x.Note) ? "—" : x.Note)</td>
+                            <td>@(x.Done ? Html.Raw("<span class=\"tag done\">انجام شد</span>") : Html.Raw("<span class=\"tag pending\">مانده</span>"))</td>
+                            <td class="msgs">
+                                @foreach (var m in x.Errors)
+                                {
+                                    <div class="err">✗ @(m)</div>
+                                }
+                                @foreach (var m in x.Warnings)
+                                {
+                                    <div class="wrn">! @(m)</div>
+                                }
+                                @if (x.Errors.Count == 0 && x.Warnings.Count == 0)
+                                {
+                                    <span class="okm">✓ معتبر</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </table>
+            </div>
+            <div class="row" style="margin-top:14px">
+                <span class="sub">قبل از افزودن، یک بکاپ خودکار گرفته می‌شود.</span>
+                <span class="spacer"></span>
+                <button class="btn" type="submit" asp-controller="Import" asp-action="Cancel">انصراف</button>
+                <button class="btn primary" type="submit" id="impCommit">@Html.Raw(Svg.Ic("check")) افزودن <span id="impCount">۰</span> ردیف به برنامه</button>
+            </div>
+        </form>
+    </div>
+}

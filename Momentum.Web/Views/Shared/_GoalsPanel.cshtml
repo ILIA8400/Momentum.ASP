@@ -1,0 +1,48 @@
+@model GoalsPanelVm
+@{
+    int Pct(double a, double b) => b > 0 ? (int)Math.Round(a / b * 100) : 0;
+    var overall = Model.Overall;
+    var progressTotal = Model.DoneTotal;
+    string Bar(double done, double goal) => goal > 0
+        ? $"<div class=\"progress\"><div class=\"{(done >= goal ? "over" : "")}\" style=\"width:{Math.Min(100, done / goal * 100):0}%\"></div></div>"
+        : "";
+}
+<div class="card-head"><h2>@Html.Raw(Svg.Ic("target")) هدف @Model.Label</h2></div>
+<div class="goal-main">
+    <label class="field"><span>هدف کلی (ساعت)</span>
+        <input class="input num js-goal" type="number" min="0" step="any" data-goal="0" data-period="@Model.Period" data-key="@Model.Key"
+               value="@(overall > 0 ? (overall / 60.0).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) : "")" placeholder="مثلاً ۳۰">
+    </label>
+    <div>
+        <div class="txt">
+            @if (overall > 0)
+            {
+                <span><b>@Fa.Hours(progressTotal)</b> از @Fa.Hours(overall) ساعت</span>
+                <span class="@(progressTotal >= overall ? "" : "muted")"><b>@Fa.D(Pct(progressTotal, overall))٪</b>@(progressTotal >= overall ? " 🎉" : "")</span>
+            }
+            else
+            {
+                <span class="muted">هدفی برای این @Model.Label تعیین نشده — تا حالا <b>@Fa.Hours(progressTotal)</b> ساعت مطالعه کردی</span>
+            }
+        </div>
+        @Html.Raw(Bar(progressTotal, overall))
+    </div>
+</div>
+<details style="margin-top:12px">
+    <summary>@Html.Raw(Svg.Ic("right", "sm")) هدف به تفکیک درس</summary>
+    <table>
+        <tr><th>درس</th><th>مطالعه‌شده</th><th>هدف (ساعت)</th><th class="bar">پیشرفت</th></tr>
+        @foreach (var s in Model.Subjects.Where(s => !s.Archived))
+        {
+            var g = Model.Goals.FirstOrDefault(x => x.SubjectId == s.Id)?.Minutes ?? 0;
+            var done = Model.PerSubjectDone.GetValueOrDefault(s.Id, 0);
+            <tr>
+                <td><span class="subj-name"><span class="dot" style="background:@s.Color"></span>@(s.Name)</span></td>
+                <td class="num">@(done > 0 ? Fa.Hm(done) : "—")</td>
+                <td><input class="input num js-goal" type="number" min="0" step="any" data-goal="@s.Id" data-period="@Model.Period" data-key="@Model.Key"
+                           value="@(g > 0 ? (g / 60.0).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) : "")"></td>
+                <td class="bar">@Html.Raw(Bar(done, g))@(g > 0 ? Html.Raw($"<span class=\"muted\">{Fa.D(Pct(done, g))}٪</span>") : Html.Raw(""))</td>
+            </tr>
+        }
+    </table>
+</details>

@@ -1,0 +1,35 @@
+@model (ReviewItem Item, bool ShowDue)
+<div class="review-item" data-id="@Model.Item.Id">
+    <div class="review-item-head">
+        <span class="subj-name"><span class="dot" style="background:@Model.Item.Subject!.Color"></span>@(Model.Item.Subject.Name)</span>
+        <b>@(Model.Item.Topic)</b>
+    </div>
+    @if (Model.ShowDue)
+    {
+        <div class="review-item-meta">
+            @{
+                var diff = (int)Math.Round((Model.Item.DueAt - DateTime.UtcNow).TotalDays);
+                if (diff < 0)
+                {
+                    <span class="tag pct bad">@Fa.D(Math.Abs(diff)) روز عقب‌افتاده</span>
+                }
+                else if (diff == 0)
+                {
+                    <span class="tag pct good">امروز</span>
+                }
+                else
+                {
+                    <span class="tag">@Fa.D(diff) روز دیگر</span>
+                }
+            }
+        </div>
+    }
+    <div class="review-item-actions">
+        <a class="btn primary" href="/Review/Session/@Model.Item.Id">@Html.Raw(Svg.Ic("activity", "sm")) شروع مرور</a>
+        <a class="btn" href="/Review/Edit/@Model.Item.Id">@Html.Raw(Svg.Ic("pencil", "sm")) ویرایش</a>
+        <form method="post" asp-controller="Review" asp-action="Delete" class="inline-form js-confirm" data-confirm="این مبحث حذف شود؟">
+            <input type="hidden" name="id" value="@Model.Item.Id" />
+            <button class="btn danger" type="submit">@Html.Raw(Svg.Ic("trash", "sm")) حذف</button>
+        </form>
+    </div>
+</div>

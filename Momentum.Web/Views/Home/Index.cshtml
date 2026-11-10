@@ -1,0 +1,305 @@
+@model DashboardVm
+@functions {
+    string Delta(double cur, double prev, Func<double, string> fmt)
+    {
+        if (prev == 0 && cur == 0) return "";
+        var d = Math.Round((cur - prev) * 10) / 10;
+        var cls = d > 0 ? "up" : d < 0 ? "down" : "flat";
+        var arrow = d > 0 ? "▲" : d < 0 ? "▼" : "=";
+        return $"<span class=\"delta {cls}\">{arrow} {fmt(Math.Abs(d))}</span>";
+    }
+}
+@{
+    ViewData["Title"] = "داشبورد";
+    var examDays = Model.ExamDays;
+    var first = Model.Records.FirstDay ?? Model.Today;
+    var span = Math.Max(1, Jalali.DiffDays(first, Model.ExamDate));
+    var elapsed = Math.Min(span, Math.Max(0, Jalali.DiffDays(first, Model.Today)));
+    int Pct(double a, double b) => b > 0 ? (int)Math.Round(a / b * 100) : 0;
+    var weekDoneTotal = Model.WeekStatsDone.Total;
+    var avg7Minutes = Model.Last7.Total / 7.0;
+    var avg7Tests = Model.Last7.Tests / 7.0;
+    var hmRange = (int)(ViewData["HmRange"] ?? 6);
+}
+
+<div class="quote card">
+    <span class="q-ic">@Html.Raw(Svg.Ic("zap"))</span>
+    <span class="q-text">
+        @if (!string.IsNullOrWhiteSpace(Model.UserName))
+        {
+            <span class="greet">@(Fa.Greeting(Model.UserName.Trim())) 👋</span>
+        }
+        <span id="quoteText" data-quotes='@System.Text.Json.JsonSerializer.Serialize(Fa.Quotes)'>@(Fa.QuoteOfDay())</span>
+    </span>
+    <button class="btn icon" id="nextQuote" title="جملهٔ بعدی">@Html.Raw(Svg.Ic("right"))</button>
+</div>
+
+<div class="dash-grid">
+    <div>
+        <div class="card countdown">
+            <div class="t">@Html.Raw(Svg.Ic("graduation")) @(Model.ExamTitle)</div>
+            <div class="big">
+                @(examDays >= 0 ? Fa.D(examDays) : Fa.D(Math.Abs(examDays)))
+                <small>
+                    @(examDays > 0 ? "روز مانده" : examDays == 0 ? "امروز روز کنکوره!" : "روز گذشته")
+                </small>
+            </div>
+            <div class="d">
+                @Html.Raw(Svg.Ic("calendar", "sm")) @Fa.FmtFull(Model.ExamDate)
+                <button id="examDate" data-date="@Model.ExamDate">تغییر تاریخ</button>
+            </div>
+            @if (examDays > 0)
+            {
+                <div class="weeks">
+                    <span><b>@Fa.D(examDays / 7)</b> هفته و <b>@Fa.D(examDays % 7)</b> روز</span>
+                    <span>از شروع ثبت: <b>@Fa.D(elapsed)</b> روز گذشته</span>
+                    <span>مطالعه‌شده تا حالا: <b>@Fa.D(Model.Records.TotalDays)</b> روز</span>
+                </div>
+                <div class="progress"><div style="width:@Pct(elapsed, span)%"></div></div>
+            }
+        </div>
+
+        <div class="card">
+            <div class="today-head">
+                <span class="date">@Html.Raw(Svg.Ic("sun")) @Fa.FmtFull(Model.Today)</span>
+                <span class="spacer"></span>
+                <a class="btn primary sm" href="/Day?date=@Model.Today">@Html.Raw(Svg.Ic("plus", "sm")) افزودن مطالعه</a>
+            </div>
+            <div class="mini-stats">
+                <div class="ms">
+                    <div class="l">@Html.Raw(Svg.Ic("clock")) مطالعه</div>
+                    <div class="v">@Fa.Hours(Model.Total)<small>ساعت</small>@Html.Raw(Delta(Model.Total, Model.Yesterday.Total, v => Fa.Hours(v) + " س"))</div>
+                </div>
+                <div class="ms">
+                    <div class="l">@Html.Raw(Svg.Ic("tests")) تست</div>
+                    <div class="v">@Fa.D(Model.Tests)@Html.Raw(Delta(Model.Tests, Model.Yesterday.Tests, v => Fa.D(v)))</div>
+                </div>
+                <div class="ms">
+                    <div class="l">@Html.Raw(Svg.Ic("target")) درصد امروز</div>
+                    <div class="v">
+                        @(Model.Percent == null ? Html.Raw("<span class=\"muted\">—</span>") : Html.Raw(Fa.D(Model.Percent) + "٪"))
+                        @if (Model.Percent != null && Model.Yesterday.Percent != null)
+                        {
+                            @Html.Raw(Delta(Model.Percent.Value, Model.Yesterday.Percent.Value, v => Fa.D(v) + "٪"))
+                        }
+                    </div>
+                </div>
+            </div>
+            @if (Model.Entries.Count > 0)
+            {
+                @Charts.Daybar(Model.Entries, Model.Total)
+            }
+
+            <div class="section-title">@Html.Raw(Svg.Ic("activity")) تایم‌لاین امروز</div>
+            @if (Model.Entries.Count > 0)
+            {
+                <div class="timeline">
+                    @foreach (var e in Model.Entries)
+                    {
+                        var time = e.StartTime != ""
+                            ? Html.Raw($"{Fa.TimeFa(e.StartTime)}{(e.EndTime != "" ? $"<br>{Fa.TimeFa(e.EndTime)}" : "")}")
+                            : Html.Raw("<span class=\"muted\">—</span>");
+                        var chips = new List<string>();
+                        if (e.StudyMin > 0) chips.Add($"<span class=\"tag study\">خواندن {Fa.Hmc(e.StudyMin)}</span>");
+                        if (e.ReviewMin > 0) chips.Add($"<span class=\"tag review\">مرور {Fa.Hmc(e.ReviewMin)}</span>");
+                        if (e.TestMin > 0) chips.Add($"<span class=\"tag test\">تست {Fa.Hmc(e.TestMin)}</span>");
+                        if (e.Tests > 0) chips.Add($"<span class=\"tag test\">{Svg.Ic("tests", "sm")}{Fa.D(e.Tests)} تست{(e.Correct + e.Wrong > 0 ? $" ({Fa.D(e.Correct)}✓ {Fa.D(e.Wrong)}✗)" : "")}</span>");
+                        var p = e.Percent();
+                        if (p != null) chips.Add($"<span class=\"tag pct {(p >= 50 ? "good" : p < 20 ? "bad" : "")}\">{Fa.D(p)}٪</span>");
+                        <div class="tl @(e.Done ? "done" : "")">
+                            <div class="time">@time</div>
+                            <div class="rail"><span class="pin" style="background:@e.Subject!.Color"></span></div>
+                            <div class="body" style="--c:@e.Subject.Color">
+                                <div class="top">
+                                    <b>@(e.Subject.Name)</b>
+                                    @(e.Done ? Html.Raw("<span class=\"tag done\">انجام شد</span>") : Html.Raw("<span class=\"tag pending\">مانده</span>"))
+                                    <span class="tag time dur">@Html.Raw(Svg.Ic("clock", "sm"))@Fa.Hm(e.Minutes)</span>
+                                </div>
+                                @if (!string.IsNullOrEmpty(e.Note))
+                                {
+                                    <div class="note">@(e.Note)</div>
+                                }
+                                @if (chips.Count > 0)
+                                {
+                                    <div class="chips">@Html.Raw(string.Join("", chips))</div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="empty">@Html.Raw(Svg.Ic("inbox"))امروز هنوز مطالعه‌ای ثبت نکردی</div>
+            }
+        </div>
+    </div>
+
+    <div>
+        <div class="card">
+            <div class="card-head">
+                <h2>@Html.Raw(Svg.Ic("list")) برنامهٔ امروز</h2>
+                <span class="spacer"></span>
+                <span class="muted">@Fa.D(Model.Done.Count) از @Fa.D(Model.Entries.Count) انجام شده</span>
+            </div>
+            @if (Model.Entries.Count > 0)
+            {
+                <div class="progress" style="margin-bottom:10px">
+                    <div class="@(Model.Done.Count == Model.Entries.Count ? "over" : "")" style="width:@Pct(Model.Done.Count, Model.Entries.Count)%"></div>
+                </div>
+            }
+            @if (Model.Pending.Count > 0)
+            {
+                <div class="section-title">@Html.Raw(Svg.Ic("timer")) مانده (@Fa.D(Model.Pending.Count))</div>
+                <div class="todo-list">
+                    @foreach (var e in Model.Pending)
+                    {
+                        <label class="todo" data-id="@e.Id">
+                            <input type="checkbox" class="js-toggle">
+                            <span class="n"><span class="dot" style="background:@e.Subject!.Color;width:8px;height:8px;border-radius:50%"></span>@(e.Subject.Name)</span>
+                            <span class="note">@(e.Note)</span>
+                            <span class="tag time">@Fa.Hmc(e.Minutes)</span>
+                        </label>
+                    }
+                </div>
+            }
+            @if (Model.Done.Count > 0)
+            {
+                <div class="section-title">@Html.Raw(Svg.Ic("check")) انجام‌شده (@Fa.D(Model.Done.Count))</div>
+                <div class="todo-list">
+                    @foreach (var e in Model.Done)
+                    {
+                        <label class="todo done" data-id="@e.Id">
+                            <input type="checkbox" class="js-toggle" checked>
+                            <span class="n"><span class="dot" style="background:@e.Subject!.Color;width:8px;height:8px;border-radius:50%"></span>@(e.Subject.Name)</span>
+                            <span class="note">@(e.Note)</span>
+                            <span class="tag time">@Fa.Hmc(e.Minutes)</span>
+                        </label>
+                    }
+                </div>
+            }
+            @if (Model.Entries.Count == 0)
+            {
+                <div class="empty muted">چیزی نیست</div>
+            }
+        </div>
+
+        <div class="card">
+            <div class="card-head"><h2>@Html.Raw(Svg.Ic("note")) یادداشت امروز</h2></div>
+            <textarea class="input" id="dayNote" data-date="@Model.Today" placeholder="هر چیزی که می‌خوای برای امروز یادت بمونه… (خودکار ذخیره می‌شه)">@(Model.TodayNote)</textarea>
+            <div class="note-status" id="noteStatus"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-head"><h2>@Html.Raw(Svg.Ic("compare")) مقایسه (انجام‌شده)</h2></div>
+            <div class="compare">
+                <div class="cmp">
+                    <div class="l">دیروز</div>
+                    <div class="v">@Fa.Hours(Model.Yesterday.Total) س</div>
+                    <div class="s">@Fa.D(Model.Yesterday.Tests) تست@(Model.Yesterday.Percent != null ? $" • {Fa.D(Model.Yesterday.Percent)}٪" : "")</div>
+                </div>
+                <div class="cmp">
+                    <div class="l">میانگین ۷ روز اخیر</div>
+                    <div class="v">@Fa.Hours(avg7Minutes) س @Html.Raw(Delta(Model.Total, avg7Minutes, v => Fa.Hours(v) + " س"))</div>
+                    <div class="s">@Fa.D(Math.Round(avg7Tests)) تست در روز</div>
+                </div>
+                <div class="cmp">
+                    <div class="l">رکورد یک روز</div>
+                    <div class="v">@(Model.Records.BestDay != null ? Fa.Hm(Model.Records.BestDay.Minutes) : "—")</div>
+                    <div class="s">
+                        @if (Model.Records.BestDay != null)
+                        {
+                            @(Model.Total >= Model.Records.BestDay.Minutes && Model.Total > 0 ? "🎉 امروز رکورد زدی!" : $"{Fa.Hours(Math.Max(0, Model.Records.BestDay.Minutes - Model.Total))} ساعت تا رکورد")
+                        }
+                    </div>
+                </div>
+                <div class="cmp">
+                    <div class="l">زنجیره</div>
+                    <div class="v">@Html.Raw(Svg.Ic("flame")) @Fa.D(Model.Records.CurrentStreak) روز</div>
+                    <div class="s">بهترین: @Fa.D(Model.Records.LongestStreak) روز</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-head">
+                <h2>@Html.Raw(Svg.Ic("week")) این هفته</h2>
+                <span class="spacer"></span>
+                <span class="muted">@Fa.FmtShort(Model.WeekStart) تا @Fa.FmtShort(Model.WeekEnd)</span>
+            </div>
+            <div class="mini-stats">
+                <div class="ms"><div class="l">@Html.Raw(Svg.Ic("clock")) مطالعه</div><div class="v">@Fa.Hours(Model.WeekStats.Total)<small>ساعت</small></div></div>
+                <div class="ms"><div class="l">@Html.Raw(Svg.Ic("tests")) تست</div><div class="v">@Fa.D(Model.WeekStats.Tests)</div></div>
+                <div class="ms"><div class="l">@Html.Raw(Svg.Ic("sun")) روز</div><div class="v">@Fa.D(Model.WeekStats.ByDay.Count)<small>از ۷</small></div></div>
+            </div>
+            @if (Model.WeekGoal > 0)
+            {
+                <div class="sub" style="display:flex;justify-content:space-between">
+                    <span>هدف هفته: @Fa.Hours(Model.WeekGoal) ساعت</span>
+                    <b>@Fa.D(Pct(weekDoneTotal, Model.WeekGoal))٪</b>
+                </div>
+                <div class="progress"><div class="@(weekDoneTotal >= Model.WeekGoal ? "over" : "")" style="width:@Math.Min(100, Pct(weekDoneTotal, Model.WeekGoal))%"></div></div>
+            }
+            else
+            {
+                <div class="muted">هدف هفتگی تعیین نشده — از تب هفتگی تنظیم کن</div>
+            }
+            @if (Model.BestSubject != null)
+            {
+                <div class="sub" style="margin-top:8px">
+                    بیشترین مطالعهٔ هفته:
+                    <span class="subj-name"><span class="dot" style="background:@Model.BestSubject.Color"></span>@(Model.BestSubject.Name)</span>
+                    <b>@Fa.Hm(Model.BestSubject.Minutes)</b>
+                </div>
+            }
+            <div class="quick-actions" style="margin-top:12px">
+                <a class="btn primary" href="/AllPlan" target="_blank">@Html.Raw(Svg.Ic("print")) خروجی All Plan (جدول هفتگی)</a>
+                <a class="btn" href="/Report?date=@Model.Today" target="_blank">@Html.Raw(Svg.Ic("list")) گزارش تفصیلی هفته</a>
+                <a class="btn" href="/Summary?date=@Model.Today" target="_blank">@Html.Raw(Svg.Ic("sheet")) جدول خلاصه</a>
+                <a class="btn" href="/Settings/BackupJson">@Html.Raw(Svg.Ic("download")) بکاپ کامل</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card heat-card">
+    <div class="card-head">
+        <h2>@Html.Raw(Svg.Ic("activity")) نقشهٔ مطالعه (انجام‌شده)</h2>
+        <span class="spacer"></span>
+        <span class="range">
+            <a class="btn pill sm @(hmRange == 6 ? "active" : "")" href="/?hm=6">۶ ماه اخیر</a>
+            <a class="btn pill sm @(hmRange == 12 ? "active" : "")" href="/?hm=12">۱ سال اخیر</a>
+        </span>
+    </div>
+    @Charts.Heatmap(Model.HeatStats.ByDay, Model.HeatFrom, Model.Today)
+</div>
+
+<div class="card import-cta">
+    <div class="row">
+        <span class="ico">@Html.Raw(Svg.Ic("sheet"))</span>
+        <div class="grow"><b>برنامه‌های قبلی داری که وارد نکردی؟</b><div class="sub">قالب اکسل رو بگیر، پرش کن، برگردون — بعد از بررسی یک‌جا اضافه می‌شن.</div></div>
+        <a class="btn primary" href="/Import">@Html.Raw(Svg.Ic("upload")) ورود از اکسل</a>
+    </div>
+</div>
+
+@if (Model.DueReviews.Count > 0)
+{
+    <div class="card">
+        <div class="card-head"><h2>@Html.Raw(Svg.Ic("activity")) مرورهای امروز (@Fa.D(Model.DueReviews.Count))</h2></div>
+        <div class="review-list">
+            @foreach (var r in Model.DueReviews)
+            {
+                <div class="review-item">
+                    <div class="review-item-head">
+                        <span class="subj-name"><span class="dot" style="background:@r.Subject!.Color"></span>@(r.Subject.Name)</span>
+                        <b>@(r.Topic)</b>
+                    </div>
+                    <div class="review-item-actions">
+                        <a class="btn primary" href="/Review/Session/@r.Id">@Html.Raw(Svg.Ic("activity", "sm")) شروع مرور</a>
+                        <a class="btn" href="/Review">@Html.Raw(Svg.Ic("activity", "sm")) همه مرورها</a>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}

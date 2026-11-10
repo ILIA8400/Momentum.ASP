@@ -1,0 +1,87 @@
+@model WeekVm
+@{
+    ViewData["Title"] = "هفتگی";
+    var today = Jalali.TodayJalali();
+    var prev = Jalali.AddDays(Model.Start, -7);
+    var next = Jalali.AddDays(Model.Start, 7);
+}
+<div class="datenav">
+    <div class="nav">
+        <a href="/Week?date=@prev" title="هفتهٔ قبل">@Html.Raw(Svg.Ic("right"))</a>
+        <a href="/Week">این هفته</a>
+        <a href="/Week?date=@next" title="هفتهٔ بعد">@Html.Raw(Svg.Ic("left"))</a>
+    </div>
+    <button class="btn ghost pick js-pick" data-date="@Model.Start" title="انتخاب تاریخ">@Html.Raw(Svg.Ic("calendar"))</button>
+    <span class="title"><span class="wd">هفتهٔ</span>@Fa.FmtShort(Model.Start) تا @Fa.FmtDate(Model.End)</span>
+    @if (Model.Start == Jalali.WeekStart(today))
+    {
+        <span class="badge-today">این هفته</span>
+    }
+</div>
+
+<div class="kpis">
+    <div class="kpi accent"><span class="l">@Html.Raw(Svg.Ic("clock")) مطالعهٔ هفته</span><span class="v">@Fa.Hours(Model.Total)<small>ساعت</small></span></div>
+    <div class="kpi"><span class="l">@Html.Raw(Svg.Ic("tests")) تست هفته</span><span class="v">@Fa.D(Model.Tests)</span></div>
+    <div class="kpi"><span class="l">@Html.Raw(Svg.Ic("sun")) روز مطالعه</span><span class="v">@Fa.D(Model.StudiedDays)<small>از ۷</small></span></div>
+    <div class="kpi"><span class="l">@Html.Raw(Svg.Ic("sigma")) میانگین روزانه</span><span class="v">@Fa.Hours(Model.StudiedDays > 0 ? Model.Total / (double)Model.StudiedDays : 0)<small>ساعت</small></span></div>
+</div>
+
+<div class="week">
+    @foreach (var day in Model.Days)
+    {
+        var list = Model.Entries.Where(e => e.Date == day).ToList();
+        var sum = list.Sum(e => e.Minutes);
+        var ts = list.Sum(e => e.Tests);
+        <a class="daycol @(day == today ? "today" : "")" href="/Day?date=@day">
+            <div class="head"><b>@Jalali.Weekdays[Jalali.Weekday(day)]</b><small>@Fa.FmtShort(day)</small></div>
+            @if (list.Count == 0)
+            {
+                <div class="muted" style="font-size:12px">—</div>
+            }
+            @foreach (var e in list)
+            {
+                <div class="mini @(e.Done ? "done" : "")" title="@(e.Note)">
+                    <span class="dot" style="background:@e.Subject!.Color"></span>
+                    <span class="n">@(e.Subject.Name)</span>
+                    <span class="t">@Fa.Hmc(e.Minutes)</span>
+                </div>
+            }
+            @if (sum > 0 || ts > 0)
+            {
+                <div class="foot">
+                    @if (sum > 0)
+                    {
+                        <span class="tag time">@Fa.Hmc(sum)</span>
+                    }
+                    @if (ts > 0)
+                    {
+                        <span class="tag test">@Fa.D(ts) تست</span>
+                    }
+                </div>
+            }
+        </a>
+    }
+</div>
+
+<div class="card goals">
+    @await Html.PartialAsync("_GoalsPanel", new GoalsPanelVm
+    {
+        Period = "week",
+        Key = Model.Start,
+        Label = "هفته",
+        Entries = Model.Entries,
+        Goals = Model.Goals,
+        Subjects = Model.Subjects,
+        DoneTotal = Model.StatsDone.Total
+    })
+</div>
+
+<div class="card">
+    <div class="row">
+        <span class="sub">خروجی‌ها برای چاپ یا ذخیره به PDF:</span>
+        <span class="spacer"></span>
+        <a class="btn primary" href="/AllPlan" target="_blank">@Html.Raw(Svg.Ic("print")) All Plan (جدول هفتگی)</a>
+        <a class="btn" href="/Report?date=@Model.Start" target="_blank">@Html.Raw(Svg.Ic("list")) گزارش تفصیلی این هفته</a>
+        <a class="btn" href="/Summary?date=@Model.Start" target="_blank">@Html.Raw(Svg.Ic("sheet")) جدول خلاصه</a>
+    </div>
+</div>

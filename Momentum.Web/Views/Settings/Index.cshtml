@@ -1,0 +1,111 @@
+@model SettingsVm
+@{
+    ViewData["Title"] = "تنظیمات و بکاپ";
+    var examDate = Model.Settings.GetValueOrDefault("exam_date", "1406-02-16");
+}
+<div class="card">
+    <div class="card-head"><h2>@Html.Raw(Svg.Ic("graduation")) پروفایل و کنکور</h2></div>
+    <form method="post" asp-controller="Settings" asp-action="Profile">
+        <div class="row">
+            <label class="field" style="min-width:180px"><span>اسم تو (برای سلام توی داشبورد)</span>
+                <input class="input" name="userName" placeholder="مثلاً محمد" value="@(Model.Settings.GetValueOrDefault("user_name", ""))">
+            </label>
+            <label class="field" style="flex:1;min-width:200px"><span>عنوان</span>
+                <input class="input" name="examTitle" value="@(Model.Settings.GetValueOrDefault("exam_title", ""))">
+            </label>
+            <label class="field"><span>تاریخ کنکور</span>
+                <button class="btn js-pick" type="button" data-date="@examDate" data-target="examDate" data-submit="true">@Html.Raw(Svg.Ic("calendar", "sm")) @Fa.FmtFull(examDate)</button>
+                <input type="hidden" name="examDate" id="examDate" value="@examDate">
+            </label>
+            <label class="field"><span>تم</span>
+                <select class="input" id="themeSel">
+                    <option value="system">خودکار (سیستم)</option>
+                    <option value="light">روشن</option>
+                    <option value="dark">تاریک</option>
+                </select>
+            </label>
+        </div>
+        <div class="row" style="margin-top:10px">
+            <button class="btn primary" type="submit">@Html.Raw(Svg.Ic("save")) ذخیره</button>
+        </div>
+    </form>
+</div>
+
+<div class="card subjects-list">
+    <div class="card-head">
+        <h2>@Html.Raw(Svg.Ic("book")) درس‌ها</h2>
+        <span class="spacer"></span>
+        <span class="muted">@Fa.D(Model.Subjects.Count(s => !s.Archived)) درس فعال</span>
+    </div>
+    @foreach (var s in Model.Subjects)
+    {
+        <form class="s @(s.Archived ? "archived" : "")" method="post" asp-controller="Settings" asp-action="SaveSubject">
+            <input type="hidden" name="id" value="@s.Id" />
+            <input type="color" name="color" value="@s.Color" title="رنگ">
+            <input type="text" class="input" name="name" value="@(s.Name)">
+            <label class="check"><input type="checkbox" name="archived" value="true" @(s.Archived ? "checked" : "")> بایگانی</label>
+            <button class="btn sm" type="submit">@Html.Raw(Svg.Ic("save", "sm")) ذخیره</button>
+            <button class="btn sm danger js-confirm" type="submit" formaction="/Settings/DeleteSubject" data-confirm="حذف این درس؟ (فقط اگر آیتمی نداشته باشد)">@Html.Raw(Svg.Ic("trash", "sm"))</button>
+        </form>
+    }
+    <form id="addSubject" method="post" asp-controller="Settings" asp-action="AddSubject">
+        <input type="color" name="color" value="#2563eb" title="رنگ">
+        <input type="text" class="input" name="name" placeholder="نام درس جدید…" required>
+        <button class="btn primary">@Html.Raw(Svg.Ic("plus")) افزودن درس</button>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-head"><h2>@Html.Raw(Svg.Ic("database")) بکاپ و بازیابی</h2></div>
+    <div class="info-line">@Html.Raw(Svg.Ic("database", "sm")) دیتابیس: <code>SQL Server</code></div>
+    <div class="info-line">@Html.Raw(Svg.Ic("folder", "sm")) بکاپ خودکار (هر اجرا، هر ۶ ساعت — @Fa.D(30) فایل آخر): <code>@(Model.BackupDir)</code></div>
+    <div class="backup-actions">
+        <a class="btn primary" href="/Settings/BackupJson">@Html.Raw(Svg.Ic("download")) بکاپ کامل JSON</a>
+        <a class="btn" href="/Settings/BackupCsv">@Html.Raw(Svg.Ic("sheet")) خروجی اکسل (CSV)</a>
+        <form method="post" asp-controller="Settings" asp-action="Snapshot" class="inline-form">
+            <button class="btn" type="submit">@Html.Raw(Svg.Ic("camera")) ساخت بکاپ فوری</button>
+        </form>
+        <form method="post" enctype="multipart/form-data" asp-controller="Settings" asp-action="Restore" class="inline-form js-confirm" data-confirm="همهٔ داده‌های فعلی با محتوای این فایل جایگزین می‌شود (قبلش یک بکاپ خودکار گرفته می‌شود). ادامه؟">
+            <label class="btn">@Html.Raw(Svg.Ic("upload")) بازیابی از JSON
+                <input type="file" name="file" accept=".json" hidden onchange="this.form.submit()">
+            </label>
+        </form>
+    </div>
+    <p class="sub">بکاپ JSON شامل <b>همه چیز</b> از روز اول است: درس‌ها، همهٔ آیتم‌های مطالعه با جزئیات، هدف‌ها، یادداشت‌های روزانه، مباحث مرور و تنظیمات. فرمت آن با نسخهٔ Node.js برنامه سازگار است. هر چند وقت یک‌بار یکی بگیر و جای امن (مثلاً Google Drive یا تلگرام) نگه دار.</p>
+    <details>
+        <summary>@Html.Raw(Svg.Ic("right", "sm")) فایل‌های بکاپ (@Fa.D(Model.Snapshots.Count))</summary>
+        <ul class="file-list">
+            @if (Model.Snapshots.Count == 0)
+            {
+                <li class="muted">هنوز بکاپی نیست</li>
+            }
+            @foreach (var f in Model.Snapshots)
+            {
+                <li>@Html.Raw(Svg.Ic("database", "sm"))<code>@(f.Name)</code><span class="muted">@Fa.D(Math.Round(f.Size / 1024.0)) KB</span></li>
+            }
+        </ul>
+    </details>
+</div>
+
+<div class="card danger-zone">
+    <div class="card-head"><h2>@Html.Raw(Svg.Ic("alert")) منطقهٔ خطر</h2></div>
+    <p class="sub">پاک کردن <b>کل تاریخچه</b> (همهٔ آیتم‌های مطالعه، هدف‌ها و یادداشت‌های روزانه). درس‌ها و تنظیمات می‌مانند. قبل از پاک شدن، یک بکاپ در پوشهٔ بکاپ ذخیره می‌شود — ولی بهتره خودت هم یه بکاپ JSON بگیری.</p>
+    <form method="post" asp-controller="Settings" asp-action="Wipe" class="row js-confirm" data-confirm="⚠️ همهٔ آیتم‌های مطالعه، هدف‌ها و یادداشت‌ها پاک می‌شوند و این کار برگشت‌ناپذیر است. ادامه می‌دهی؟">
+        <a class="btn" href="/Settings/BackupJson">@Html.Raw(Svg.Ic("download")) اول بکاپ بگیر</a>
+        <input class="input" name="confirm" placeholder="برای تأیید بنویس: پاک کن" style="width:200px">
+        <button class="btn danger" type="submit">@Html.Raw(Svg.Ic("trash")) پاک کردن کل تاریخچه…</button>
+    </form>
+</div>
+
+<div class="card">
+    <div class="row">
+        <span class="sub">راهنمای استفاده و نصب:</span>
+        <span class="spacer"></span>
+        <a class="btn" href="/Guide" target="_blank">@Html.Raw(Svg.Ic("help")) راهنما</a>
+    </div>
+</div>
+
+<div class="credit">
+    <span class="logo">@Html.Raw(Svg.Ic("zap"))</span>
+    <div><b>Momentum</b> — برنامه‌ریز مطالعه (نسخهٔ ASP.NET Core)</div>
+</div>

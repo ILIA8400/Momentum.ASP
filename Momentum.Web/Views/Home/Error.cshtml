@@ -1,0 +1,14 @@
+@{
+    ViewData["Title"] = "خطا";
+}
+<div class="card danger-zone">
+    <div class="card-head"><h2>@Html.Raw(Svg.Ic("alert")) خطایی رخ داد</h2></div>
+    <p class="sub">یک اتفاق غیرمنتظره پیش آمد. می‌توانی به داشبورد برگردی و دوباره تلاش کنی.</p>
+    <div class="row">
+        <a class="btn primary" href="/">برگشت به داشبورد</a>
+    </div>
+    @if (ViewData.ContainsKey("Detail"))
+    {
+        <p class="muted" style="margin-top:10px">@ViewData["Detail"]</p>
+    }
+</div>

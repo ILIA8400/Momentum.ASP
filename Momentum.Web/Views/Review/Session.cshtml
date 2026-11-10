@@ -1,0 +1,63 @@
+@model ReviewSessionVm
+@{
+    ViewData["Title"] = "مرور";
+    var item = Model.Item;
+}
+<div class="card review-session">
+    <div class="card-head">
+        <h2>@Html.Raw(Svg.Ic("activity")) مرور: @(item.Topic)</h2>
+        <span class="sub">@(Model.SubjectName)</span>
+    </div>
+    <div class="review-recall">
+        <span class="ico">@Html.Raw(Svg.Ic("brain"))</span>
+        <p><b>اول سعی کن از حافظه به یاد بیاوری</b></p>
+        <p class="sub">مبحث: @(item.Topic)</p>
+    </div>
+
+    @if (Model.Reveal)
+    {
+        <div class="review-desc">
+            <h3>توضیحات:</h3>
+            <pre>@(string.IsNullOrEmpty(item.Description) ? "(بدون توضیحات)" : item.Description)</pre>
+        </div>
+        <div class="review-ratings">
+            <form method="post" asp-controller="Review" asp-action="Rate" class="inline-form">
+                <input type="hidden" name="id" value="@item.Id" />
+                <input type="hidden" name="rating" value="1" />
+                <button class="btn danger btn-rating" type="submit">@Html.Raw(Svg.Ic("x", "sm")) دوباره</button>
+            </form>
+            <form method="post" asp-controller="Review" asp-action="Rate" class="inline-form">
+                <input type="hidden" name="id" value="@item.Id" />
+                <input type="hidden" name="rating" value="2" />
+                <button class="btn btn-rating" type="submit">@Html.Raw(Svg.Ic("minus", "sm")) سخت</button>
+            </form>
+            <form method="post" asp-controller="Review" asp-action="Rate" class="inline-form">
+                <input type="hidden" name="id" value="@item.Id" />
+                <input type="hidden" name="rating" value="3" />
+                <button class="btn btn-rating" type="submit">@Html.Raw(Svg.Ic("check", "sm")) خوب</button>
+            </form>
+            <form method="post" asp-controller="Review" asp-action="Rate" class="inline-form">
+                <input type="hidden" name="id" value="@item.Id" />
+                <input type="hidden" name="rating" value="4" />
+                <button class="btn primary btn-rating" type="submit">@Html.Raw(Svg.Ic("star", "sm")) خیلی راحت</button>
+            </form>
+        </div>
+        <div class="preview-info">
+            پیش‌نمایش موعد بعدی:
+            <div class="preview-grid">
+                <span class="preview-item danger">@Model.Preview["again"] ← دوباره</span>
+                <span class="preview-item">@Model.Preview["hard"] ← سخت</span>
+                <span class="preview-item good">@Model.Preview["good"] ← خوب</span>
+                <span class="preview-item primary">@Model.Preview["easy"] ← خیلی راحت</span>
+            </div>
+        </div>
+    }
+
+    <div class="review-actions">
+        @if (!Model.Reveal)
+        {
+            <a class="btn primary" href="/Review/Session/@item.Id?reveal=true">@Html.Raw(Svg.Ic("eye", "sm")) نمایش توضیحات</a>
+        }
+        <a class="btn" href="/Review">@Html.Raw(Svg.Ic("x", "sm")) انصراف</a>
+    </div>
+</div>

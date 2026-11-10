@@ -1,0 +1,188 @@
+@model AllPlanVm
+@functions {
+    static string Hm0(int m) => m > 0 ? Fa.Hmc(m) : "۰۰";
+    string SumCell(WeekAgg t, string label = "")
+    {
+        var sb = new System.Text.StringBuilder("<td class=\"sum\">");
+        if (!string.IsNullOrEmpty(label))
+            sb.Append($"<div style=\"font-weight:800;color:var(--ink);margin-bottom:2px\">{label}</div>");
+        sb.Append($"خواندن : <b>{Hm0(t.Study)}</b><br>مرور : <b>{Hm0(t.Review)}</b><br>تست : <b>{Hm0(t.Test)}</b><br>");
+        sb.Append($"تعداد تست : <b>{Fa.D(t.Tests)}</b><br>تایم هر تست : <b>{(t.Tests > 0 && t.Test > 0 ? Fa.D(Math.Round(t.Test / (double)t.Tests)) : "۰")}</b> دقیقه</td>");
+        return sb.ToString();
+    }
+    string MiniCell(WeekAgg a)
+    {
+        return $"<td><div class=\"mini\"><span title=\"خواندن\">{Hm0(a.Study)}</span><span title=\"مرور\">{Hm0(a.Review)}</span>" +
+               $"<span class=\"t\" title=\"تست\">{Hm0(a.Test)}{(a.Tests > 0 ? $"<br><small>{Fa.D(a.Tests)} ت</small>" : "")}</span></div>" +
+               $"<div class=\"tot {(a.Minutes > 0 ? "" : "z")}\">{Hm0(a.Minutes)}</div></td>";
+    }
+    static string NoteCell(WeekAgg? a)
+    {
+        if (a == null || (a.NotesStudy.Count == 0 && a.NotesReview.Count == 0 && a.NotesTest.Count == 0))
+            return "<td class=\"cell\"><span class=\"dot\">·</span></td>";
+        string Part(List<string> notes, string label) => notes.Count > 0
+            ? $"<div class=\"k\">{label}</div><div class=\"n\">{string.Join("<br>", notes.Select(Fa.HtmlEncode))}</div>"
+            : "";
+        return $"<td class=\"cell\">{Part(a.NotesStudy, "خواندن")}{Part(a.NotesReview, "مرور")}{Part(a.NotesTest, "تست")}</td>";
+    }
+    static WeekAgg WeekTotal(Dictionary<(string, int), WeekAgg> agg, string w)
+    {
+        var t = new WeekAgg();
+        foreach (var a in agg.Where(x => x.Key.Item1 == w).Select(x => x.Value))
+        {
+            t.Minutes += a.Minutes; t.Study += a.Study; t.Review += a.Review; t.Test += a.Test; t.Tests += a.Tests;
+        }
+        return t;
+    }
+}
+@{
+    Layout = null;
+    var all = new WeekAgg();
+    foreach (var a in Model.SubTotal.Values)
+    {
+        all.Minutes += a.Minutes; all.Study += a.Study; all.Review += a.Review; all.Test += a.Test; all.Tests += a.Tests;
+    }
+}
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Momentum — All Plan</title>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --ink: #111827; --ink-2: #4b5563; --muted: #9ca3af; --line: #dbe3ee; --head: #dbeafe; --head-2: #bfdbfe; --blue: #1d4ed8; --blue-soft: #eff6ff; --purple: #5b4fcf; --purple-soft: #ede9fe; }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #eef1f6; color: var(--ink); font-family: Vazirmatn, "Segoe UI", Tahoma, sans-serif; font-size: 11.5px; line-height: 1.5; }
+        .toolbar { position: sticky; top: 0; background: #111827; color: #fff; padding: 10px 20px; display: flex; gap: 10px; align-items: center; z-index: 5; flex-wrap: wrap; }
+        .toolbar button, .toolbar a, .toolbar select { background: #2563eb; color: #fff; border: 0; border-radius: 8px; padding: 8px 14px; font: inherit; font-size: 13px; cursor: pointer; text-decoration: none; }
+        .toolbar .ghost { background: transparent; border: 1px solid rgba(255,255,255,.3); }
+        .toolbar select { background: #1f2937; }
+        .toolbar .sp { flex: 1; }
+        .toolbar small { opacity: .7; font-size: 12px; }
+        .wrap { padding: 20px; }
+        h1 { text-align: center; font-size: 22px; margin: 4px 0 14px; }
+        .sub { text-align: center; color: var(--ink-2); margin: -10px 0 14px; font-size: 12.5px; }
+        .scroller { overflow: auto; background: #fff; border-radius: 10px; box-shadow: 0 6px 30px rgba(0,0,0,.08); }
+        table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
+        th, td { border-bottom: 1px solid var(--line); border-inline-start: 1px solid var(--line); vertical-align: top; }
+        thead th { position: sticky; top: 0; background: var(--head); color: var(--blue); font-weight: 700; padding: 8px 6px; text-align: center; z-index: 2; white-space: nowrap; font-size: 12px; }
+        thead th.wk { position: sticky; right: 0; z-index: 3; }
+        td.wk { position: sticky; right: 0; background: #f8fafc; z-index: 1; text-align: center; font-weight: 700; color: var(--ink-2); padding: 6px; writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; }
+        td.wk small { display: block; font-weight: 400; font-size: 10px; color: var(--muted); }
+        td.sum { min-width: 105px; padding: 6px 8px; font-size: 11px; color: var(--ink-2); line-height: 1.7; white-space: nowrap; background: #fbfcfe; }
+        td.sum b { color: var(--ink); font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: embed; }
+        td.cell { min-width: 120px; max-width: 170px; padding: 6px 7px; text-align: center; }
+        td.cell .k { color: var(--blue); font-size: 10px; font-weight: 600; margin-top: 4px; }
+        td.cell .k:first-child { margin-top: 0; }
+        td.cell .n { color: var(--ink); font-size: 11px; line-height: 1.5; }
+        td.cell .dot { color: var(--muted); }
+        tr.stat td { background: var(--blue-soft); border-bottom: 2px solid var(--head-2); padding: 0; }
+        tr.stat td.sum { background: #dbeafe; text-align: center; font-weight: 800; font-size: 13px; color: var(--blue); padding: 8px; vertical-align: middle; white-space: nowrap; }
+        .mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 5px 4px 3px; }
+        .mini span { background: #fff; border-radius: 4px; padding: 2px 0; font-size: 10.5px; direction: ltr; font-variant-numeric: tabular-nums; color: var(--ink-2); text-align: center; }
+        .mini span.t { color: #b45309; }
+        .mini span.t small { font-size: 9px; }
+        .tot { text-align: center; font-weight: 800; color: var(--blue); padding: 3px 0 5px; font-size: 12px; direction: ltr; }
+        .tot.z { color: var(--muted); font-weight: 500; }
+        tfoot td { background: var(--purple-soft); color: var(--purple); border-bottom: 0; }
+        tfoot td.wk { background: var(--purple); color: #fff; }
+        tfoot .mini span { background: #fff; }
+        tfoot .tot { color: var(--purple); }
+        tfoot td.sum { background: #ddd6fe; color: var(--purple); font-weight: 800; font-size: 13px; text-align: center; vertical-align: middle; }
+        .empty { text-align: center; color: var(--muted); padding: 40px; }
+        @@page { size: A3 landscape; margin: 8mm; }
+        @@media print {
+            body { background: #fff; font-size: 10px; }
+            .toolbar { display: none; }
+            .wrap { padding: 0; }
+            .scroller { overflow: visible; box-shadow: none; }
+            thead th, td.wk { position: static; }
+            table { width: 100%; }
+            tr.stat, tr.content { break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <button onclick="window.print()">🖨️ چاپ / ذخیره PDF</button>
+        <select onchange="location.search='?range='+this.value">
+            <option value="all" selected="@("all" == Model.Range)">همهٔ هفته‌ها (از روز اول)</option>
+            <option value="4" selected="@("4" == Model.Range)">۴ هفتهٔ اخیر</option>
+            <option value="8" selected="@("8" == Model.Range)">۸ هفتهٔ اخیر</option>
+            <option value="12" selected="@("12" == Model.Range)">۱۲ هفتهٔ اخیر</option>
+        </select>
+        <a class="ghost" href="/Report">گزارش تفصیلی این هفته</a>
+        <a class="ghost" href="/">← برگشت به اپ</a>
+        <span class="sp"></span>
+        <small>برای PDF: مقصد «Save as PDF»، کاغذ A3 افقی</small>
+    </div>
+    <div class="wrap">
+        <h1>برنامه هفتگی انجام شده</h1>
+        <div class="sub">
+            @(string.IsNullOrWhiteSpace(Model.UserName) ? "" : Model.UserName + " · ")
+            از @Fa.FmtShort(Model.FirstWeek) تا @Fa.FmtShort(Jalali.AddDays(Model.ThisWeek, 6)) · @Fa.D(Model.Weeks.Count) هفته
+        </div>
+        @if (Model.Weeks.Count == 0)
+        {
+            <div class="scroller"><div class="empty">هنوز چیزی ثبت نشده</div></div>
+        }
+        else
+        {
+            <div class="scroller">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="wk"></th>
+                            <th>جمع ساعات</th>
+                            @foreach (var s in Model.Subjects)
+                            {
+                                <th>@(s.Name)</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < Model.Weeks.Count; i++)
+                        {
+                            var w = Model.Weeks[i];
+                            var t = WeekTotal(Model.Agg, w);
+                            <tr class="content">
+                                <td class="wk" rowspan="2">هفته @Model.Ordinal(i)<small>@Fa.FmtShort(w) – @Fa.FmtShort(Jalali.AddDays(w, 6))</small></td>
+                                @Html.Raw(SumCell(t))
+                                @foreach (var s in Model.Subjects)
+                                {
+                                    @Html.Raw(NoteCell(Model.Agg.TryGetValue((w, s.Id), out var a) ? a : null))
+                                }
+                            </tr>
+                            <tr class="stat">
+                                <td class="sum">@Hm0(t.Minutes)</td>
+                                @foreach (var s in Model.Subjects)
+                                {
+                                    @Html.Raw(MiniCell(Model.Agg.TryGetValue((w, s.Id), out var a) ? a : new WeekAgg()))
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="content">
+                            <td class="wk" rowspan="2">جمع ساعات هر درس</td>
+                            @Html.Raw(SumCell(all))
+                            @foreach (var s in Model.Subjects)
+                            {
+                                <td class="cell" style="font-weight:700;padding-top:10px">@(s.Name)</td>
+                            }
+                        </tr>
+                        <tr class="stat">
+                            <td class="sum">@Hm0(all.Minutes)</td>
+                            @foreach (var s in Model.Subjects)
+                            {
+                                @Html.Raw(MiniCell(Model.SubTotal.GetValueOrDefault(s.Id) ?? new WeekAgg()))
+                            }
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        }
+    </div>
+</body>
+</html>

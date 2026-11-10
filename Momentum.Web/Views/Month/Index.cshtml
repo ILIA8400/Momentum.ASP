@@ -1,0 +1,66 @@
+@model MonthVm
+@{
+    ViewData["Title"] = "ماهانه";
+    var today = Jalali.TodayJalali();
+    var prevMonth = Model.Jm == 1 ? $"{Model.Jy - 1:D4}-12-01" : $"{Model.Jy:D4}-{Model.Jm - 1:D2}-01";
+    var nextMonth = Model.Jm == 12 ? $"{Model.Jy + 1:D4}-01-01" : $"{Model.Jy:D4}-{Model.Jm + 1:D2}-01";
+    var offset = Jalali.Weekday(Model.First);
+}
+<div class="datenav">
+    <div class="nav">
+        <a href="/Month?date=@prevMonth" title="ماه قبل">@Html.Raw(Svg.Ic("right"))</a>
+        <a href="/Month">این ماه</a>
+        <a href="/Month?date=@nextMonth" title="ماه بعد">@Html.Raw(Svg.Ic("left"))</a>
+    </div>
+    <button class="btn ghost pick js-pick" data-date="@Model.First" title="انتخاب تاریخ">@Html.Raw(Svg.Ic("calendar"))</button>
+    <span class="title">@Jalali.Months[Model.Jm - 1] @Fa.D(Model.Jy)</span>
+</div>
+
+<div class="kpis">
+    <div class="kpi accent"><span class="l">@Html.Raw(Svg.Ic("clock")) مطالعهٔ ماه</span><span class="v">@Fa.Hours(Model.Total)<small>ساعت</small></span></div>
+    <div class="kpi"><span class="l">@Html.Raw(Svg.Ic("tests")) تست ماه</span><span class="v">@Fa.D(Model.Tests)</span></div>
+    <div class="kpi"><span class="l">@Html.Raw(Svg.Ic("sun")) روز مطالعه</span><span class="v">@Fa.D(Model.ByDay.Count)<small>از @Fa.D(Model.Len)</small></span></div>
+</div>
+
+<div class="card">
+    <div class="month">
+        @foreach (var w in Jalali.Weekdays)
+        {
+            <div class="wd">@w</div>
+        }
+        @for (int i = 0; i < offset; i++)
+        {
+            <div class="cell empty"></div>
+        }
+        @for (int day = 1; day <= Model.Len; day++)
+        {
+            var ds = $"{Model.MonthKey}-{day:D2}";
+            Model.ByDay.TryGetValue(ds, out var x);
+            var lvl = x.Min > 0 ? Math.Min(4, (int)Math.Ceiling(x.Min / (double)Model.Max * 4)) : 0;
+            <a class="cell @(ds == today ? "today" : "") @(lvl > 0 ? "l" + lvl : "")" href="/Day?date=@ds">
+                <span class="n">@Fa.D(day)</span>
+                @if (x.Min > 0)
+                {
+                    <span class="h">@Html.Raw(Svg.Ic("clock"))@Fa.Hmc(x.Min)</span>
+                    @if (x.Tests > 0)
+                    {
+                        <span class="c">@Fa.D(x.Tests) تست</span>
+                    }
+                }
+            </a>
+        }
+    </div>
+</div>
+
+<div class="card goals">
+    @await Html.PartialAsync("_GoalsPanel", new GoalsPanelVm
+    {
+        Period = "month",
+        Key = Model.MonthKey,
+        Label = "ماه",
+        Entries = Model.Entries,
+        Goals = Model.Goals,
+        Subjects = Model.Subjects,
+        DoneTotal = Model.StatsDone.Total
+    })
+</div>

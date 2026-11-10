@@ -1,0 +1,161 @@
+@{
+    Layout = null;
+}
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>راهنمای Momentum</title>
+    <script>try { const t = localStorage.getItem('theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) { }</script>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/css/site.css">
+    <style>
+        .doc { max-width: 860px; margin: 0 auto; padding: 24px 20px 60px; }
+        .doc h1 { font-size: 26px; margin: 0 0 6px; }
+        .doc .lead { color: var(--text-2); margin-bottom: 20px; }
+        .doc h2 { font-size: 18px; margin: 28px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--primary-soft); display: flex; align-items: center; gap: 8px; }
+        .doc h3 { font-size: 15px; margin: 18px 0 6px; color: var(--text); }
+        .doc p, .doc li { line-height: 1.9; }
+        .doc ol, .doc ul { padding-inline-start: 22px; }
+        .doc li { margin: 4px 0; }
+        .doc code { font-size: 13px; }
+        .doc pre { background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; direction: ltr; text-align: left; overflow-x: auto; font-family: Consolas, monospace; font-size: 13px; }
+        .doc .tip { background: var(--primary-soft); border-inline-start: 4px solid var(--primary); padding: 10px 14px; border-radius: 10px; margin: 12px 0; }
+        .doc .warn { background: var(--warn-soft); border-inline-start: 4px solid var(--warn); padding: 10px 14px; border-radius: 10px; margin: 12px 0; }
+        .doc table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        .doc th, .doc td { border: 1px solid var(--border); padding: 7px 10px; text-align: right; font-size: 13.5px; }
+        .doc th { background: var(--bg-2); }
+        .toc { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 18px; }
+        .toc a { display: block; padding: 3px 0; }
+        .top { position: sticky; top: 0; background: var(--card); border-bottom: 1px solid var(--border); padding: 10px 20px; display: flex; gap: 12px; align-items: center; z-index: 5; }
+        .top a { font-weight: 600; }
+        kbd { background: var(--bg-2); border: 1px solid var(--border-2); border-radius: 5px; padding: 0 6px; font-size: 12px; }
+        @@media print { .top { display: none; } .doc { padding: 0; } }
+    </style>
+</head>
+<body>
+    <div class="top"><a href="/">← برگشت به اپ</a><span class="spacer"></span><button class="btn sm" onclick="window.print()">چاپ / PDF</button></div>
+    <div class="doc">
+        <h1>⚡ راهنمای Momentum (نسخهٔ ASP.NET Core)</h1>
+        <p class="lead">یک اپ برای ثبت مطالعهٔ روزانه، تست‌ها، هدف‌ها و آمار — با تقویم شمسی، مرور هوشمند FSRS و روزشمار کنکور. بازنویسی نسخهٔ Node.js اصلی با ASP.NET Core MVC و SQL Server.</p>
+
+        <div class="toc">
+            <b>فهرست</b>
+            <a href="#install">۱. نصب و اجرا</a>
+            <a href="#usage">۲. چطور استفاده کنم؟</a>
+            <a href="#backup">۳. بکاپ، بازیابی و امنیت داده</a>
+            <a href="#faq">۴. سؤالات متداول و رفع مشکل</a>
+        </div>
+
+        <h2 id="install">۱. نصب و اجرا</h2>
+        <p><b>پیش‌نیازها:</b></p>
+        <ul>
+            <li><b>.NET 10 SDK</b> — از <code>https://dotnet.microsoft.com/download/dotnet/10.0</code></li>
+            <li><b>SQL Server</b> — یکی از این‌ها: Express (رایگان)، Developer (رایگان، کامل‌ترین) یا LocalDB (همراه Visual Studio)</li>
+            <li>Visual Studio 2022/2026 (پیشنهادی) یا VS Code</li>
+        </ul>
+        <h3>تنظیم ConnectionString</h3>
+        <p>در فایل <code>appsettings.json</code> قسمت <code>ConnectionStrings:Default</code> را مطابق نوع SQL Server خودت تنظیم کن:</p>
+        <table>
+            <tr><th>نوع</th><th>نمونهٔ ConnectionString</th></tr>
+            <tr><td>SQL Server Express</td><td><code>Server=.\SQLEXPRESS;Database=Momentum;Trusted_Connection=True;TrustServerCertificate=True</code></td></tr>
+            <tr><td>LocalDB (همراه VS)</td><td><code>Server=(localdb)\MSSQLLocalDB;Database=Momentum;Trusted_Connection=True</code></td></tr>
+            <tr><td>نمونهٔ پیش‌فرض</td><td><code>Server=.;Database=Momentum;Trusted_Connection=True;TrustServerCertificate=True</code></td></tr>
+        </table>
+        <div class="tip">💡 در حالت Development (اجرا با F5 در Visual Studio) مقدار داخل <code>appsettings.Development.json</code> خوانده می‌شود — هر دو را تنظیم کن یا آن را با مقدار دلخواه خودت هم‌سان کن.</div>
+        <h3>اجرا</h3>
+        <ol>
+            <li>پوشهٔ پروژه را باز کن و <code>dotnet restore</code> بزن (یا در Visual Studio فقط Build کن؛ خودش نصب می‌کند).</li>
+            <li><code>dotnet run</code> از پوشهٔ <code>Momentum.Web</code> — یا در Visual Studio دکمهٔ <b>Start</b> (F5).</li>
+            <li>مرورگر را روی <code>https://localhost:5xxx</code> یا <code>http://localhost:5xxx</code> باز کن (پورت در خروجی کنسول مشخص است).</li>
+        </ol>
+        <div class="tip">💡 دیتابیس و جدول‌ها <b>خودکار</b> در اولین اجرا ساخته می‌شوند و ۱۲ درس پیش‌فرض هم ثبت می‌شوند — نیازی به اجرای دستی اسکریپت SQL نیست.</div>
+
+        <h2 id="usage">۲. چطور استفاده کنم؟</h2>
+        <h3>تب‌ها</h3>
+        <table>
+            <tr><th>تب</th><th>چی توشه</th></tr>
+            <tr><td><b>داشبورد</b></td><td>جملهٔ انگیزشی روز، روزشمار کنکور، خلاصهٔ امروز (ساعت، تست، درصد + مقایسه با دیروز)، نوار سهم درس‌ها، تایم‌لاین امروز، لیست انجام‌شده/مانده، یادداشت روز، مقایسه با میانگین ۷ روز و رکورد، وضعیت هفته، خروجی All Plan و <b>نقشهٔ مطالعه</b> (مربع‌های رنگی مثل GitHub برای ۶ ماه یا ۱ سال اخیر؛ hover = جزئیات روز، کلیک = رفتن به همون روز).</td></tr>
+            <tr><td><b>روزانه</b></td><td>ثبت و ویرایش مطالعهٔ هر روز. با فلش‌ها یا آیکون تقویم بین روزها جابه‌جا شو.</td></tr>
+            <tr><td><b>هفتگی</b></td><td>۷ ستون شنبه تا جمعه، تست و ساعت هر روز، هدف هفته (کلی و به تفکیک درس). کلیک روی هر روز → می‌ره به تب روزانهٔ همون روز.</td></tr>
+            <tr><td><b>ماهانه</b></td><td>تقویم ماه با شدت رنگ بر اساس ساعت مطالعه (heatmap)، هدف ماه.</td></tr>
+            <tr><td><b>مرور</b></td><td>مباحث درس را اضافه می‌کنی و الگوریتم FSRS برای هرکدام زمان مرور بهینه تعیین می‌کند؛ با امتیاز «دوباره/سخت/خوب/خیلی راحت» زمان بعدی حساب می‌شود.</td></tr>
+            <tr><td><b>آمار</b></td><td>بازهٔ دلخواه: ساعت، تست، درصد میانگین، روز مطالعه، تفکیک درس، روند روزانه و «بهترین رکوردها».</td></tr>
+            <tr><td><b>ورود از اکسل</b></td><td>قالب اکسل بگیر، برنامه‌های قبلی رو توش بریز، برگردون؛ بعد از بررسی و تأیید، یک‌جا اضافه می‌شن.</td></tr>
+            <tr><td><b>تنظیمات و بکاپ</b></td><td>اسم تو (برای سلام صبح/ظهر/عصر/شب توی داشبورد)، تاریخ/عنوان کنکور، تم، مدیریت درس‌ها، بکاپ و بازیابی، خروجی CSV، پاک کردن تاریخچه.</td></tr>
+        </table>
+
+        <h3>ثبت یک مطالعه (تب روزانه)</h3>
+        <ul>
+            <li><b>درس</b> و <b>مدت کل</b> اجباری‌اند؛ بقیه اختیاری.</li>
+            <li><b>ساعت شروع/پایان</b> بنویسی، مدت خودش حساب می‌شه (حتی اگه از نیمه‌شب رد بشه).</li>
+            <li><b>خواندن / مرور / تست زدن</b> (دقیقه) بنویسی، جمعشون می‌شه مدت کل. اگه خودت مدت کل رو دستی عوض کنی، همون می‌مونه.</li>
+            <li><b>تست</b>: تعداد کل، درست، غلط → درصد با نمرهٔ منفی همون لحظه نشون داده می‌شه:
+                <code>(۳×درست − غلط) ÷ (۳×کل)</code>. تست‌هایی که درست/غلط ندارن، در میانگین درصد حساب نمی‌شن.</li>
+            <li><b>شرح</b>: مثلاً «فیلم جلسه ۱۲» تا یادت بمونه کجا بودی.</li>
+            <li><b>انجام شد</b>: می‌تونی برنامهٔ روز رو از قبل بنویسی و بعد تیک بزنی. تیک از داشبورد و لیست روز هم می‌خوره.</li>
+        </ul>
+
+        <h3>هدف‌گذاری</h3>
+        <p>در تب هفتگی/ماهانه، «هدف کلی (ساعت)» رو بنویس؛ نوار پیشرفت و درصد نشون داده می‌شه. با باز کردن «هدف به تفکیک درس» برای هر درس جدا هدف بذار.</p>
+
+        <h3>خروجی هفتگی All Plan (PDF)</h3>
+        <p><b>All Plan</b> جدول بزرگ «برنامه هفتگی انجام شده» است: هر ردیف یک هفته، هر ستون یک درس؛ داخل هر خانه شرح کارهای اون هفته (خواندن/مرور/تست) و زیرش زمان‌ها و جمع. ستون «جمع ساعات» جمع هفته و ردیف آخر جمع هر درس روی همهٔ هفته‌هاست. از منوی بالا می‌تونی «همهٔ هفته‌ها» یا ۴/۸/۱۲ هفتهٔ اخیر رو انتخاب کنی. کنارش «گزارش تفصیلی هفته» (روز به روز) و «جدول خلاصه» هم هست.</p>
+        <ol>
+            <li>از داشبورد یا تب هفتگی روی «خروجی All Plan» بزن.</li>
+            <li>دکمهٔ «چاپ / ذخیره PDF» → در پنجرهٔ چاپ، مقصد (Destination) رو <b>Save as PDF</b> بذار → Save.</li>
+            <li>با «هفتهٔ قبل/بعد» بالای صفحه می‌تونی گزارش هفته‌های دیگه رو هم بگیری.</li>
+        </ol>
+
+        <h3>ورود از اکسل (برنامه‌های قبلی)</h3>
+        <ol>
+            <li>«دانلود قالب اکسل» → فایل <code>momentum-template.xlsx</code>. شیت «برنامه» رو پر کن؛ شیت «راهنما» توضیح ستون‌ها، لیست دقیق درس‌ها و چند ردیف نمونه داره.</li>
+            <li>فقط <b>تاریخ</b> (مثل ۱۴۰۵/۰۶/۲۷)، <b>درس</b> (دقیقاً اسم داخل اپ؛ از لیست کشویی انتخاب کن) و <b>مدت</b> اجباری‌اند. مدت: دقیقه (۱۸۰) یا ساعت:دقیقه (3:00). می‌تونی به جای مدت کل، خواندن/مرور/تست یا ساعت شروع و پایان بنویسی.</li>
+            <li>فایل ذخیره‌شده (xlsx یا csv) رو در همون تب انتخاب کن. اپ همهٔ ردیف‌ها رو بررسی می‌کنه و یک <b>پیش‌نمایش</b> نشون می‌ده: سبز = معتبر، قرمز = خطا (اضافه نمی‌شه، دلیلش نوشته شده)، زرد = احتمالاً تکراری یا مشکوک.</li>
+            <li>تیک ردیف‌هایی که می‌خوای رو بزن و «افزودن … ردیف به برنامه». قبلش بکاپ خودکار گرفته می‌شه و همه با هم اضافه می‌شن.</li>
+        </ol>
+
+        <h3>سیستم مرور (FSRS)</h3>
+        <p>در تب «مرور» برای هر مبحثی که می‌خوای در ذهنت تثبیت بشه یک آیتم بساز. برنامه با الگوریتم <b>FSRS</b> (همان که Anki استفاده می‌کند) بهترین فاصلهٔ مرور را حساب می‌کند: مبحث‌هایی که یادت می‌مانند کمتر تکرار می‌شوند و موارد فراموش‌شده زودتر برمی‌گردند. موقع مرور اول از حافظه یادآوری کن، بعد توضیحات را ببین و به خودت امتیاز بده.</p>
+
+        <h3>تم روز/شب</h3>
+        <p>دکمهٔ کنار هدر: خودکار (طبق ویندوز) → روشن → تاریک. در تنظیمات هم قابل انتخابه.</p>
+
+        <h2 id="backup">۳. بکاپ، بازیابی و امنیت داده</h2>
+        <h3>داده‌ها کجان؟</h3>
+        <ul>
+            <li>همه‌چیز در دیتابیس <b>Momentum</b> روی SQL Server شما.</li>
+            <li>بکاپ خودکار JSON در پوشهٔ <code>backups\</code> (کنار پروژه): هر بار اجرا و هر ۶ ساعت (۳۰ فایل آخر نگه داشته می‌شه).</li>
+        </ul>
+        <h3>بکاپ دستی (توصیه: هفته‌ای یک بار)</h3>
+        <ol>
+            <li>تنظیمات → «بکاپ کامل JSON». این فایل <b>همه‌چیز از روز اول</b> رو داره: درس‌ها، همهٔ آیتم‌ها با جزئیات، هدف‌ها، یادداشت‌ها، مباحث مرور و تنظیمات.</li>
+            <li>فایل JSON رو یه جای امن بذار: Saved Messages تلگرام، Google Drive، ایمیل به خودت، فلش.</li>
+        </ol>
+        <div class="warn">⚠️ اگه لپ‌تاپ خراب/گم بشه، فقط همین فایل JSON نجاتت می‌ده. پوشهٔ <code>backups\</code> روی همون لپ‌تاپه!</div>
+        <h3>بازیابی</h3>
+        <ol>
+            <li>اپ رو اجرا کن (دیتابیس جدید هم باشه اشکالی ندارد).</li>
+            <li>تنظیمات → «بازیابی از JSON» → فایل بکاپ رو انتخاب کن → تأیید. همه‌چیز برمی‌گرده (قبلش هم از دیتای فعلی بکاپ گرفته می‌شه).</li>
+        </ol>
+        <div class="tip">💡 فرمت بکاپ JSON با نسخهٔ Node.js برنامه سازگار است؛ می‌توانی داده‌ات را بین دو نسخه جابه‌جا کنی.</div>
+        <h3>خروجی اکسل</h3>
+        <p>تنظیمات → «خروجی اکسل (CSV)»: همهٔ آیتم‌ها با ستون‌های جدا. با Excel یا Google Sheets باز می‌شه.</p>
+        <h3>پاک کردن کل تاریخچه</h3>
+        <p>تنظیمات → «منطقهٔ خطر». قبل از پاک شدن، بکاپ در پوشهٔ بکاپ ذخیره می‌شه؛ اگه پشیمون شدی از همون JSON بازیابی کن. درس‌ها و تنظیمات پاک نمی‌شن.</p>
+
+        <h2 id="faq">۴. سؤالات متداول و رفع مشکل</h2>
+        <ul>
+            <li><b>خطای اتصال به دیتابیس موقع اجرا</b>: ConnectionString را در <code>appsettings.json</code> بررسی کن. اگر SQL Server Express نصب داری، <code>Server=.\SQLEXPRESS</code>؛ اگر فقط Visual Studio داری، <code>Server=(localdb)\MSSQLLocalDB</code> را امتحان کن.</li>
+            <li><b>سرویس SQL Server روشن نیست</b>: در منوی Start تایپ کن <kbd>Services</kbd> → سرویس <code>SQL Server (SQLEXPRESS)</code> را پیدا و Start کن.</li>
+            <li><b>فونت فارسی زشت شد</b>: فونت از Google Fonts لود می‌شه؛ آفلاین که باشی فونت سیستم (Segoe UI/Tahoma) استفاده می‌شه — اپ کار می‌کنه.</li>
+            <li><b>تاریخ امروز اشتباهه</b>: تاریخ/ساعت ویندوز رو چک کن؛ اپ از ساعت سیستم استفاده می‌کنه.</li>
+            <li><b>می‌خوام درس جدید اضافه کنم / درسی رو حذف کنم</b>: تنظیمات → درس‌ها. درسی که آیتم داره حذف نمی‌شه؛ به جاش «بایگانی» کن تا از لیست انتخاب حذف بشه ولی آمار قدیمیش بمونه.</li>
+            <li><b>پورت اجرا</b>: در حالت Development معمولاً ۵۰۰۰ تا ۷۰۰۰ است و در خروجی کنسول/پنجرهٔ اجرای Visual Studio نوشته می‌شود.</li>
+        </ul>
+        <p class="muted" style="margin-top:30px">Momentum (ASP.NET Core MVC) · بازنویسی نسخهٔ Node.js اصلی</p>
+    </div>
+</body>
+</html>

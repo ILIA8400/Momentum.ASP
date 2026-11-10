@@ -1,0 +1,28 @@
+@model ReviewItem
+@{
+    ViewData["Title"] = "ویرایش مبحث";
+    var subjects = (List<Subject>)ViewBag.Subjects;
+}
+<div class="card">
+    <div class="card-head"><h2>@Html.Raw(Svg.Ic("pencil")) ویرایش مبحث</h2></div>
+    <form id="editReviewForm" class="eform" method="post" asp-controller="Review" asp-action="EditSave">
+        <input type="hidden" name="id" value="@Model.Id" />
+        <div class="row2">
+            <label class="field"><span>درس *</span>
+                <select name="subjectId" class="input" required>
+                    @foreach (var s in subjects.Where(s => !s.Archived))
+                    {
+                        <option value="@s.Id" selected="@(Model.SubjectId == s.Id)">@(s.Name)</option>
+                    }
+                </select>
+            </label>
+        </div>
+        <label class="field"><span>مبحث *</span><input class="input" type="text" name="topic" value="@(Model.Topic)" required></label>
+        <label class="field"><span>توضیحات</span><textarea class="input" name="description" rows="4">@(Model.Description)</textarea></label>
+        <div class="foot">
+            <button class="btn primary" type="submit">@Html.Raw(Svg.Ic("save")) ذخیره</button>
+            <a class="btn" href="/Review">@Html.Raw(Svg.Ic("x", "sm")) انصراف</a>
+            <span class="spacer"></span>
+        </div>
+    </form>
+</div>

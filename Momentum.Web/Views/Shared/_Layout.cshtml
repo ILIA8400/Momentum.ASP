@@ -1,0 +1,60 @@
+@using Momentum.Web
+@using Momentum.Web.Helpers
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@{
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    var today = Jalali.TodayJalali();
+    var toast = TempData["Toast"] as string;
+    var toastErr = TempData["ToastErr"] as string;
+    var csrf = Antiforgery.GetAndStoreTokens(Context).RequestToken;
+}
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>@(ViewData["Title"] ?? "Momentum") — برنامه‌ریز مطالعه</title>
+    <script>try { const t = localStorage.getItem('theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) { }</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/css/site.css" asp-append-version="true">
+    <meta name="request-token" content="@csrf" />
+</head>
+<body>
+    <header class="topbar">
+        <div class="topbar-inner">
+            <div class="brand">
+                <span class="logo">@Html.Raw(Svg.Ic("zap"))</span>
+                <span>Momentum<small>برنامه‌ریز مطالعه</small></span>
+            </div>
+            <nav class="tabs" id="tabs">
+                <a href="/" class="@(controller == "Home" ? "active" : "")">@Html.Raw(Svg.Ic("home"))<span>داشبورد</span></a>
+                <a href="/Day" class="@(controller == "Day" ? "active" : "")">@Html.Raw(Svg.Ic("sun"))<span>روزانه</span></a>
+                <a href="/Week" class="@(controller == "Week" ? "active" : "")">@Html.Raw(Svg.Ic("week"))<span>هفتگی</span></a>
+                <a href="/Month" class="@(controller == "Month" ? "active" : "")">@Html.Raw(Svg.Ic("calendar"))<span>ماهانه</span></a>
+                <a href="/Review" class="@(controller == "Review" ? "active" : "")">@Html.Raw(Svg.Ic("activity"))<span>مرور</span></a>
+                <a href="/Stats" class="@(controller == "Stats" ? "active" : "")">@Html.Raw(Svg.Ic("chart"))<span>آمار</span></a>
+                <a href="/Import" class="@(controller == "Import" ? "active" : "")">@Html.Raw(Svg.Ic("sheet"))<span>ورود از اکسل</span></a>
+                <a href="/Settings" class="@(controller == "Settings" ? "active" : "")">@Html.Raw(Svg.Ic("settings"))<span>تنظیمات و بکاپ</span></a>
+            </nav>
+            <div class="header-right">
+                <div class="today-chip">@Html.Raw(Svg.Ic("calendar", "sm")) امروز <b>@Fa.FmtFull(today)</b></div>
+                <button class="theme-btn" id="themeBtn" title="تغییر تم"></button>
+                <a class="theme-btn" href="/Guide" target="_blank" title="راهنما">@Html.Raw(Svg.Ic("help"))</a>
+            </div>
+        </div>
+    </header>
+
+    <main id="main" class="container">
+        @RenderBody()
+    </main>
+
+    <div id="toast" class="toast" data-msg="@toast" data-err="@toastErr"></div>
+
+    <script src="/js/jalali.js"></script>
+    <script src="/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

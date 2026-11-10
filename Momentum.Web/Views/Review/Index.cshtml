@@ -1,0 +1,65 @@
+@model ReviewVm
+@{
+    ViewData["Title"] = "مرور";
+}
+<div class="card">
+    <div class="card-head"><h2>@Html.Raw(Svg.Ic("plus")) افزودن مبحث جدید</h2></div>
+    <form id="addReviewForm" class="eform" method="post" asp-controller="Review" asp-action="Add">
+        <div class="row2">
+            <label class="field"><span>درس *</span>
+                <select name="subjectId" class="input" required>
+                    @foreach (var s in Model.Subjects.Where(s => !s.Archived))
+                    {
+                        <option value="@s.Id">@(s.Name)</option>
+                    }
+                </select>
+            </label>
+        </div>
+        <label class="field"><span>مبحث *</span><input class="input" type="text" name="topic" placeholder="مثلاً: BFS و DFS" required></label>
+        <label class="field"><span>توضیحات</span><textarea class="input" name="description" placeholder="متن برای مرور بعدی..." rows="4"></textarea></label>
+        <div class="foot">
+            <button class="btn primary" type="submit">@Html.Raw(Svg.Ic("plus")) افزودن مبحث</button>
+            <span class="spacer"></span>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-head"><h2>@Html.Raw(Svg.Ic("clock")) مرورهای امروز (@Fa.D(Model.DueItems.Count))</h2></div>
+    @if (Model.DueItems.Count == 0)
+    {
+        <div class="empty">@Html.Raw(Svg.Ic("check")) هیچ مروری برای امروز نیست</div>
+    }
+    @foreach (var item in Model.DueItems)
+    {
+        <partial name="_ReviewItem" model="(item, true)" />
+    }
+</div>
+
+@if (Model.OverdueItems.Count > 0)
+{
+    <div class="card danger-zone">
+        <div class="card-head"><h2>@Html.Raw(Svg.Ic("alert")) عقب‌افتاده (@Fa.D(Model.OverdueItems.Count))</h2></div>
+        @foreach (var item in Model.OverdueItems)
+        {
+            <partial name="_ReviewItem" model="(item, true)" />
+        }
+    </div>
+}
+
+<div class="card">
+    <div class="card-head"><h2>@Html.Raw(Svg.Ic("list")) مباحث من (@Fa.D(Model.AllItems.Count))</h2></div>
+    @if (Model.AllItems.Count == 0)
+    {
+        <div class="empty">@Html.Raw(Svg.Ic("inbox"))موضوعی اضافه نشده</div>
+    }
+    else
+    {
+        <div class="review-list">
+            @foreach (var item in Model.AllItems)
+            {
+                <partial name="_ReviewItem" model="(item, true)" />
+            }
+        </div>
+    }
+</div>

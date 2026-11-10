@@ -1,0 +1,110 @@
+@model StatsVm
+@functions {
+    string RecCard(string color, string icon, string title, string value, string desc)
+        => $"<div class=\"rec\"><span class=\"ico {color}\">{Svg.Ic(icon)}</span><div><div class=\"t\">{title}</div><div class=\"v\">{value}</div><div class=\"d\">{desc}</div></div></div>";
+}
+@{
+    ViewData["Title"] = "آمار";
+    var st = Model.Stats;
+    var rec = Model.Records;
+    var kinds = new (string K, string L)[] { ("week", "این هفته"), ("month", "این ماه"), ("30", "۳۰ روز اخیر"), ("all", "همه"), ("custom", "بازهٔ دلخواه") };
+    int Pct(double a, double b) => b > 0 ? (int)Math.Round(a / b * 100) : 0;
+}
+<div class="card">
+    <div class="range">
+        @foreach (var (k, l) in kinds)
+        {
+            <a class="btn pill @(Model.Kind == k ? "active" : "")" href="/Stats?kind=@k&mode=@Model.Mode&from=@Model.From&to=@Model.To">@l</a>
+        }
+        <span class="spacer"></span>
+        <span class="mode-toggle">
+            <a class="btn pill sm @(Model.Mode == "done" ? "active" : "")" href="/Stats?kind=@Model.Kind&mode=done&from=@Model.From&to=@Model.To">@Html.Raw(Svg.Ic("check", "sm")) انجام‌شده</a>
+            <a class="btn pill sm @(Model.Mode == "all" ? "active" : "")" href="/Stats?kind=@Model.Kind&mode=all&from=@Model.From&to=@Model.To">@Html.Raw(Svg.Ic("list", "sm")) برنامه‌ریزی</a>
+        </span>
+        @if (!Model.IsAll)
+        {
+            <span class="sub">@Fa.FmtShort(Model.From) تا @Fa.FmtDate(Model.To)</span>
+        }
+    </div>
+    @if (Model.Kind == "custom")
+    {
+        <div class="row" style="margin-top:12px">
+            <span class="sub">از</span>
+            <button class="btn js-pick" data-date="@Model.From" data-target="from">@Html.Raw(Svg.Ic("calendar", "sm")) @Fa.FmtDate(Model.From)</button>
+            <span class="sub">تا</span>
+            <button class="btn js-pick" data-date="@Model.To" data-target="to">@Html.Raw(Svg.Ic("calendar", "sm")) @Fa.FmtDate(Model.To)</button>
+        </div>
+    }
+</div>
+
+<div class="kpis">
+    <div class="kpi accent"><span class="l">@Html.Raw(Svg.Ic("clock")) ساعت مطالعه</span><span class="v">@Fa.Hours(st.Total)<small>ساعت</small></span></div>
+    <div class="kpi"><span class="l">@Html.Raw(Svg.Ic("tests")) تعداد تست</span><span class="v">@Fa.D(st.Tests)</span></div>
+    <div class="kpi"><span class="l">@Html.Raw(Svg.Ic("target")) درصد میانگین</span><span class="v">@(st.Percent == null ? "—" : Fa.D(st.Percent) + "٪")</span></div>
+    <div class="kpi"><span class="l">@Html.Raw(Svg.Ic("sun")) روز مطالعه</span><span class="v">@Fa.D(Model.StudiedDays)</span></div>
+    <div class="kpi"><span class="l">@Html.Raw(Svg.Ic("sigma")) میانگین در روز مطالعه</span><span class="v">@Fa.Hours(Model.Avg)<small>ساعت</small></span></div>
+    <div class="kpi"><span class="l">@Html.Raw(Svg.Ic("check")) انجام‌شده</span><span class="v">@(st.Count > 0 ? Fa.D(Pct(st.Done, st.Count)) + "٪" : "—")<small>@Fa.D(st.Done)/@Fa.D(st.Count)</small></span></div>
+</div>
+
+<div class="card">
+    <div class="card-head">
+        <h2>@Html.Raw(Svg.Ic("trophy")) بهترین رکوردها</h2>
+        <span class="spacer"></span>
+        <span class="muted">فقط مطالعه‌های انجام‌شده</span>
+    </div>
+    <div class="records">
+        @Html.Raw(RecCard("gold", "clock", "بیشترین مطالعه در یک روز",
+            rec.BestDay != null ? Fa.Hm(rec.BestDay.Minutes) : "—",
+            rec.BestDay != null ? Fa.FmtFull(rec.BestDay.Date) : "هنوز رکوردی نداری"))
+        @Html.Raw(RecCard("blue", "tests", "بیشترین تست در یک روز",
+            rec.BestTestDay is { Tests: > 0 } ? Fa.D(rec.BestTestDay.Tests) + " تست" : "—",
+            rec.BestTestDay is { Tests: > 0 } ? Fa.FmtFull(rec.BestTestDay.Date) : "هنوز تستی ثبت نشده"))
+        @Html.Raw(RecCard("gold", "star", "بهترین هفته (مطالعه)",
+            rec.BestWeek != null ? Fa.Hours(rec.BestWeek.Minutes) + " ساعت" : "—",
+            rec.BestWeek != null ? "هفتهٔ " + Fa.FmtShort(rec.BestWeek.Key) : ""))
+        @Html.Raw(RecCard("blue", "star", "بهترین هفته (تست)",
+            rec.BestTestWeek is { Tests: > 0 } ? Fa.D(rec.BestTestWeek.Tests) + " تست" : "—",
+            rec.BestTestWeek is { Tests: > 0 } ? "هفتهٔ " + Fa.FmtShort(rec.BestTestWeek.Key) : ""))
+        @Html.Raw(RecCard("red", "flame", "زنجیرهٔ فعلی",
+            Fa.D(rec.CurrentStreak) + " روز",
+            rec.CurrentStreak > 0 ? "روزهای متوالی با مطالعه" : "امروز شروع کن!"))
+        @Html.Raw(RecCard("green", "flame", "طولانی‌ترین زنجیره",
+            Fa.D(rec.LongestStreak) + " روز",
+            $"مجموع {Fa.D(rec.TotalDays)} روز مطالعه"))
+    </div>
+</div>
+
+<div class="card bars">
+    <div class="card-head"><h2>@Html.Raw(Svg.Ic("book")) به تفکیک درس</h2></div>
+    @if (st.BySubject.Count == 0)
+    {
+        <div class="empty">@Html.Raw(Svg.Ic("inbox"))در این بازه داده‌ای نیست</div>
+    }
+    @foreach (var s in st.BySubject)
+    {
+        <div class="b">
+            <span class="subj-name"><span class="dot" style="background:@s.Color"></span>@(s.Name)</span>
+            <div class="track"><div class="fill" style="width:@(s.Minutes * 100.0 / Model.MaxSub)%;background:@s.Color"></div></div>
+            <span class="val">
+                <b>@Fa.Hours(s.Minutes) س</b><span class="muted">(@Fa.D(Pct(s.Minutes, st.Total))٪)</span>
+                @if (s.Tests > 0)
+                {
+                    <span class="tag test">@Fa.D(s.Tests) تست</span>
+                }
+                @if (s.Percent != null)
+                {
+                    <span class="tag pct @(s.Percent >= 50 ? "good" : s.Percent < 20 ? "bad" : "")">@Fa.D(s.Percent)٪</span>
+                }
+            </span>
+        </div>
+    }
+</div>
+
+<div class="card">
+    <div class="card-head">
+        <h2>@Html.Raw(Svg.Ic("chart")) روند روزانه</h2>
+        <span class="spacer"></span>
+        <span class="muted">ساعت مطالعه در هر روز @(Model.Mode == "done" ? "(انجام‌شده)" : "(برنامه‌ریزی)")</span>
+    </div>
+    @Charts.Trend(st.ByDay, Model.From, Model.To)
+</div>

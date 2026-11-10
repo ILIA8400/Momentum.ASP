@@ -1,0 +1,199 @@
+@model ReportVm
+@functions {
+    static string PctCls(double? p) => p == null ? "" : p >= 50 ? "good" : p < 20 ? "bad" : "";
+}
+@{
+    Layout = null;
+    var start = Model.Start;
+}
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Momentum — گزارش هفتگی</title>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --ink: #111827; --ink-2: #4b5563; --muted: #9ca3af; --line: #e5e7eb; --soft: #f3f4f6; --primary: #2563eb; --ok: #16a34a; --warn: #d97706; --danger: #dc2626; }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #e5e7eb; color: var(--ink); font-family: Vazirmatn, "Segoe UI", Tahoma, sans-serif; font-size: 12.5px; line-height: 1.6; }
+        .toolbar { position: sticky; top: 0; background: #111827; color: #fff; padding: 10px 20px; display: flex; gap: 10px; align-items: center; z-index: 5; }
+        .toolbar button, .toolbar a { background: var(--primary); color: #fff; border: 0; border-radius: 8px; padding: 8px 16px; font: inherit; cursor: pointer; text-decoration: none; }
+        .toolbar .ghost { background: transparent; border: 1px solid rgba(255,255,255,.3); }
+        .toolbar .sp { flex: 1; }
+        .toolbar small { opacity: .7; }
+        .page { background: #fff; width: 210mm; min-height: 297mm; margin: 20px auto; padding: 14mm 12mm; box-shadow: 0 10px 40px rgba(0,0,0,.2); }
+        h1 { margin: 0; font-size: 22px; letter-spacing: -.3px; }
+        h2 { margin: 18px 0 8px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+        h2::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+        .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; border-bottom: 2px solid var(--ink); padding-bottom: 10px; }
+        .head .meta { text-align: left; color: var(--ink-2); font-size: 12px; }
+        .head .brand { font-size: 11px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
+        .kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 12px; }
+        .kpi { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+        .kpi .l { font-size: 11px; color: var(--ink-2); }
+        .kpi .v { font-size: 18px; font-weight: 800; }
+        .kpi .v small { font-size: 11px; font-weight: 500; color: var(--muted); margin-inline-start: 3px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 5px 6px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: top; }
+        th { background: var(--soft); font-size: 11px; color: var(--ink-2); font-weight: 600; }
+        td.n, th.n { text-align: center; direction: ltr; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .day { margin-top: 12px; break-inside: avoid; }
+        .day .dh { display: flex; align-items: center; gap: 10px; background: var(--soft); border-radius: 8px; padding: 6px 10px; font-weight: 700; }
+        .day .dh .sum { margin-inline-start: auto; font-weight: 500; color: var(--ink-2); font-size: 12px; display: flex; gap: 12px; }
+        .day .empty { color: var(--muted); padding: 6px 10px; }
+        .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-inline-end: 5px; vertical-align: middle; }
+        .ok { color: var(--ok); font-weight: 700; }
+        .no { color: var(--muted); }
+        .pct { font-weight: 700; }
+        .pct.good { color: var(--ok); } .pct.bad { color: var(--danger); }
+        .note { color: var(--ink-2); }
+        .daynote { margin: 6px 10px 0; padding: 6px 10px; background: #fffbeb; border-inline-start: 3px solid var(--warn); border-radius: 6px; color: #78350f; white-space: pre-wrap; }
+        .subs td .bar { height: 8px; background: var(--soft); border-radius: 4px; overflow: hidden; }
+        .subs td .bar > div { height: 100%; border-radius: 4px; }
+        .goal { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+        .goal .bar { flex: 1; height: 10px; background: var(--soft); border-radius: 5px; overflow: hidden; }
+        .goal .bar > div { height: 100%; background: var(--primary); }
+        .foot { margin-top: 20px; padding-top: 8px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; display: flex; justify-content: space-between; }
+        .ltr { direction: ltr; unicode-bidi: embed; }
+        @@page { size: A4; margin: 10mm; }
+        @@media print {
+            body { background: #fff; }
+            .toolbar { display: none; }
+            .page { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <button onclick="window.print()">🖨️ چاپ / ذخیره PDF</button>
+        <a class="ghost" href="/Report?date=@Jalali.AddDays(start, -7)">‹ هفتهٔ قبل</a>
+        <a class="ghost" href="/Report?date=@Jalali.AddDays(start, 7)">هفتهٔ بعد ›</a>
+        <a class="ghost" href="/AllPlan">گزارش کامل (All Plan)</a>
+        <a class="ghost" href="/Summary?date=@start">جدول خلاصه</a>
+        <span class="sp"></span>
+        <small>در پنجرهٔ چاپ، مقصد را «Save as PDF» بگذار</small>
+    </div>
+    <div class="page">
+        <div class="head">
+            <div>
+                <div class="brand">ALL PLAN · گزارش هفتگی</div>
+                <h1>هفتهٔ @Fa.FmtShort(Model.Start) تا @Fa.FmtDate(Model.End)</h1>
+                <div style="color:var(--ink-2);font-size:12px">
+                    @(Model.Settings.GetValueOrDefault("exam_title", "")):
+                    @(Model.ExamDays > 0 ? Html.Raw($"<b>{Fa.D(Model.ExamDays)}</b> روز مانده") : Html.Raw("—"))
+                    · @Fa.FmtDate(Model.Settings.GetValueOrDefault("exam_date", ""))
+                </div>
+            </div>
+            <div class="meta">تاریخ گزارش: @Fa.FmtDate(Jalali.TodayJalali())<br><span class="ltr">@Model.Start → @Model.End</span></div>
+        </div>
+        <div class="kpis">
+            <div class="kpi"><div class="l">مطالعهٔ هفته</div><div class="v">@Fa.Hours(Model.Stats.Total)<small>ساعت</small></div></div>
+            <div class="kpi"><div class="l">تعداد تست</div><div class="v">@Fa.D(Model.Stats.Tests)</div></div>
+            <div class="kpi"><div class="l">درصد میانگین</div><div class="v">@(Model.Stats.Percent == null ? "—" : Fa.D(Model.Stats.Percent) + "٪")</div></div>
+            <div class="kpi"><div class="l">روز مطالعه</div><div class="v">@Fa.D(Model.Stats.ByDay.Count)<small>از ۷</small></div></div>
+            <div class="kpi"><div class="l">انجام‌شده</div><div class="v">@Fa.D(Model.DoneCount)<small>از @Fa.D(Model.Entries.Count)</small></div></div>
+        </div>
+        @if (Model.Goal > 0)
+        {
+            var gp = (int)Math.Round(Model.Stats.Total * 100.0 / Model.Goal);
+            <div class="goal">
+                <span>هدف هفته: <b>@Fa.Hours(Model.Goal)</b> ساعت</span>
+                <div class="bar"><div style="width:@Math.Min(100, gp)%"></div></div>
+                <b>@Fa.D(gp)٪</b>
+            </div>
+        }
+
+        <h2>خلاصه به تفکیک درس</h2>
+        @if (Model.Stats.BySubject.Count > 0)
+        {
+            <table class="subs">
+                <thead>
+                    <tr>
+                        <th>درس</th><th style="width:35%">سهم</th><th class="n">مدت</th><th class="n">خواندن</th>
+                        <th class="n">مرور</th><th class="n">تست (دقیقه)</th><th class="n">تعداد تست</th><th class="n">درصد</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in Model.Stats.BySubject)
+                    {
+                        <tr>
+                            <td><span class="dot" style="background:@s.Color"></span>@(s.Name)</td>
+                            <td><div class="bar"><div style="width:@(s.Minutes * 100.0 / Model.MaxSub)%;background:@s.Color"></div></div></td>
+                            <td class="n"><b>@Fa.Hmc(s.Minutes)</b></td>
+                            <td class="n">@Fa.D(s.StudyMin)</td>
+                            <td class="n">@Fa.D(s.ReviewMin)</td>
+                            <td class="n">@Fa.D(s.TestMin)</td>
+                            <td class="n">@Fa.D(s.Tests)</td>
+                            <td class="n pct @PctCls(s.Percent)">@(s.Percent == null ? "—" : Fa.D(s.Percent) + "٪")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="daynote" style="background:#f3f4f6;border-color:#9ca3af;color:#4b5563">این هفته چیزی ثبت نشده</div>
+        }
+
+        <h2>برنامهٔ روزانه</h2>
+        @foreach (var day in Model.Days)
+        {
+            var list = Model.Entries.Where(e => e.Date == day).ToList();
+            var sum = list.Sum(e => e.Minutes);
+            var tests = list.Sum(e => e.Tests);
+            var dn = list.Count(e => e.Done);
+            <div class="day">
+                <div class="dh">
+                    <span>@Jalali.Weekdays[Jalali.Weekday(day)]</span>
+                    <span style="font-weight:500;color:var(--ink-2)">@Fa.FmtDate(day)</span>
+                    @if (list.Count > 0)
+                    {
+                        <span class="sum"><span>⏱ @Fa.Hmc(sum)</span><span>✎ @Fa.D(tests) تست</span><span>✓ @Fa.D(dn)/@Fa.D(list.Count)</span></span>
+                    }
+                </div>
+                @if (list.Count > 0)
+                {
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width:18%">درس</th><th class="n" style="width:12%">بازه</th><th class="n" style="width:8%">مدت</th>
+                                <th class="n" style="width:14%">خواندن/مرور/تست</th><th class="n" style="width:12%">تست (✓/✗)</th>
+                                <th class="n" style="width:7%">درصد</th><th>شرح</th><th class="n" style="width:6%">وضعیت</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var e in list)
+                            {
+                                var p = e.Percent();
+                                <tr>
+                                    <td><span class="dot" style="background:@e.Subject!.Color"></span>@(e.Subject.Name)</td>
+                                    <td class="n">@(e.StartTime != "" ? Fa.TimeFa(e.StartTime) + (e.EndTime != "" ? "–" + Fa.TimeFa(e.EndTime) : "") : "—")</td>
+                                    <td class="n"><b>@Fa.Hmc(e.Minutes)</b></td>
+                                    <td class="n">@((e.StudyMin > 0 || e.ReviewMin > 0 || e.TestMin > 0) ? $"{Fa.D(e.StudyMin)}/{Fa.D(e.ReviewMin)}/{Fa.D(e.TestMin)}" : "—")</td>
+                                    <td class="n">@(e.Tests > 0 ? Fa.D(e.Tests) + ((e.Correct + e.Wrong > 0) ? $" ({Fa.D(e.Correct)}/{Fa.D(e.Wrong)})" : "") : "—")</td>
+                                    <td class="n pct @PctCls(p)">@(p == null ? "—" : Fa.D(p) + "٪")</td>
+                                    <td class="note">@(e.Note)</td>
+                                    <td class="n">@(e.Done ? Html.Raw("<span class=\"ok\">✓</span>") : Html.Raw("<span class=\"no\">○</span>"))</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <div class="empty">مطالعه‌ای ثبت نشده</div>
+                }
+                @if (Model.Notes.TryGetValue(day, out var note) && !string.IsNullOrEmpty(note))
+                {
+                    <div class="daynote">📝 @(note)</div>
+                }
+            </div>
+        }
+        <div class="foot">
+            <span>Momentum — All Plan</span>
+            <span>@Fa.D(Model.Entries.Count) آیتم · @Fa.Hours(Model.Stats.Total) ساعت · @Fa.D(Model.Stats.Tests) تست</span>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,168 @@
+@model DayVm
+@{
+    ViewData["Title"] = "روزانه";
+    var d = Model.Date;
+    var today = Jalali.TodayJalali();
+    var prev = Jalali.AddDays(d, -1);
+    var next = Jalali.AddDays(d, 1);
+    var ed = Model.Edit;
+}
+<div class="datenav">
+    <div class="nav">
+        <a href="/Day?date=@prev" title="قبلی">@Html.Raw(Svg.Ic("right"))</a>
+        <a href="/Day">امروز</a>
+        <a href="/Day?date=@next" title="بعدی">@Html.Raw(Svg.Ic("left"))</a>
+    </div>
+    <button class="btn ghost pick js-pick" data-date="@d" title="انتخاب تاریخ">@Html.Raw(Svg.Ic("calendar"))</button>
+    <span class="title"><span class="wd">@Jalali.Weekdays[Jalali.Weekday(d)]،</span>@Fa.FmtDate(d)</span>
+    @if (d == today)
+    {
+        <span class="badge-today">امروز</span>
+    }
+</div>
+
+<div class="card">
+    <div class="card-head">
+        <h2>@Html.Raw(Svg.Ic(ed != null ? "pencil" : "plus")) @(ed != null ? "ویرایش آیتم" : "افزودن مطالعه")</h2>
+        <span class="spacer"></span>
+        <span class="muted">فقط درس و مدت اجباری‌اند</span>
+    </div>
+    <form id="entryForm" class="eform" method="post" asp-controller="Day" asp-action="Save">
+        <input type="hidden" name="Id" value="@(ed?.Id)" />
+        <input type="hidden" name="Date" value="@d" />
+        <div class="row2">
+            <label class="field"><span>درس *</span>
+                <select name="SubjectId" class="input" required>
+                    @foreach (var s in Model.Subjects.Where(s => !s.Archived))
+                    {
+                        <option value="@s.Id" selected="@(ed != null && ed.SubjectId == s.Id)">@(s.Name)</option>
+                    }
+                </select>
+            </label>
+            <div class="fs">
+                <div class="lg">@Html.Raw(Svg.Ic("timer")) بازهٔ زمانی <span class="muted" style="font-weight:400">(اختیاری — مدت خودکار حساب می‌شود)</span></div>
+                <div class="grid g2">
+                    <label class="field"><span>ساعت شروع</span><input class="input" type="time" name="StartTime" value="@(ed?.StartTime ?? "")"></label>
+                    <label class="field"><span>ساعت پایان</span><input class="input" type="time" name="EndTime" value="@(ed?.EndTime ?? "")"></label>
+                </div>
+            </div>
+        </div>
+        <div class="row2">
+            <div class="fs">
+                <div class="lg">@Html.Raw(Svg.Ic("clock")) مدت زمان (دقیقه)</div>
+                <div class="grid g3">
+                    <label class="field"><span>خواندن</span><input class="input num" type="number" name="StudyMin" min="0" step="1" placeholder="۰" value="@(ed?.StudyMin > 0 ? ed.StudyMin : null)"></label>
+                    <label class="field"><span>مرور</span><input class="input num" type="number" name="ReviewMin" min="0" step="1" placeholder="۰" value="@(ed?.ReviewMin > 0 ? ed.ReviewMin : null)"></label>
+                    <label class="field"><span>تست زدن</span><input class="input num" type="number" name="TestMin" min="0" step="1" placeholder="۰" value="@(ed?.TestMin > 0 ? ed.TestMin : null)"></label>
+                </div>
+                <div class="total" style="margin-top:10px">
+                    <span>مدت کل *</span>
+                    <input class="input num" type="number" name="Minutes" min="1" step="1" style="width:90px" value="@(ed?.Minutes)" placeholder="دقیقه">
+                    <span id="totalHint" class="muted"></span>
+                </div>
+                <div class="hint">اگه جزئیات یا بازه رو وارد کنی، مدت کل خودش پر می‌شه. می‌تونی فقط همین یکی رو هم بنویسی.</div>
+            </div>
+            <div class="fs">
+                <div class="lg">@Html.Raw(Svg.Ic("tests")) تست</div>
+                <div class="grid g3">
+                    <label class="field"><span>تعداد کل</span><input class="input num" type="number" name="Tests" min="0" placeholder="۰" value="@(ed?.Tests > 0 ? ed.Tests : null)"></label>
+                    <label class="field"><span>درست</span><input class="input num" type="number" name="Correct" min="0" placeholder="۰" value="@(ed?.Correct > 0 ? ed.Correct : null)"></label>
+                    <label class="field"><span>غلط</span><input class="input num" type="number" name="Wrong" min="0" placeholder="۰" value="@(ed?.Wrong > 0 ? ed.Wrong : null)"></label>
+                </div>
+                <div class="total" style="margin-top:10px"><span>درصد (نمره منفی):</span><b id="pctHint">—</b></div>
+                <div class="total" style="margin-top:4px"><span>درصد صحت (درست/کل):</span><b id="pctSimpleHint">—</b></div>
+                <div class="hint">درصد نمره منفی = (۳×درست − غلط) ÷ (۳×کل) | درصد صحت = درست ÷ کل × ۱۰۰</div>
+            </div>
+        </div>
+        <label class="field"><span>شرح</span><input class="input" type="text" name="Note" placeholder="مثلاً: فیلم جلسه ۱۲ — فصل ۳ تا صفحه ۴۰" value="@(ed?.Note ?? "")"></label>
+        <div class="foot">
+            <label class="check"><input type="checkbox" name="Done" value="true" @(ed is { Done: true } ? "checked" : "")> انجام شد</label>
+            @if (ed != null)
+            {
+                <a class="btn" href="/Day?date=@d">انصراف</a>
+            }
+            <button class="btn primary" type="submit">@Html.Raw(Svg.Ic(ed != null ? "save" : "plus")) @(ed != null ? "ذخیره تغییرات" : "افزودن")</button>
+            <span class="spacer"></span>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-head">
+        <h2>@Html.Raw(Svg.Ic("list")) برنامهٔ روز</h2>
+        <span class="spacer"></span>
+        <span class="muted">@Fa.D(Model.Entries.Count) مورد</span>
+    </div>
+    <div class="entries">
+        @if (Model.Entries.Count == 0)
+        {
+            <div class="empty">@Html.Raw(Svg.Ic("inbox"))هنوز چیزی برای این روز ثبت نشده</div>
+        }
+        @foreach (var e in Model.Entries)
+        {
+            var p = e.Percent();
+            <div class="entry @(e.Done ? "done" : "")" data-id="@e.Id">
+                <form method="post" asp-controller="Day" asp-action="Toggle" class="js-toggle-form">
+                    <input type="hidden" name="id" value="@e.Id" />
+                    <input type="hidden" name="done" value="@(e.Done ? "false" : "true")" />
+                    <input type="checkbox" class="chk js-toggle @(e.Done ? "checked" : "")" @(e.Done ? "checked" : "") title="انجام شد">
+                </form>
+                <span class="subj">
+                    <span class="dot" style="background:@e.Subject!.Color"></span>@(e.Subject.Name)
+                    @if (e.StartTime != "")
+                    {
+                        <span class="times">@Fa.TimeFa(e.StartTime)@(e.EndTime != "" ? "–" + Fa.TimeFa(e.EndTime) : "")</span>
+                    }
+                </span>
+                <span class="note" title="@(e.Note)">@(e.Note)</span>
+                <span class="meta">
+                    <span class="tag time">@Html.Raw(Svg.Ic("clock", "sm"))@Fa.Hm(e.Minutes)</span>
+                    @if (e.Tests > 0)
+                    {
+                        <span class="tag test">@Html.Raw(Svg.Ic("tests", "sm"))@Fa.D(e.Tests) تست</span>
+                    }
+                    @if (p != null)
+                    {
+                        <span class="tag pct @(p >= 50 ? "good" : p < 20 ? "bad" : "")">@Fa.D(p)٪</span>
+                    }
+                </span>
+                <span class="actions">
+                    <a class="btn icon" href="/Day?date=@d&edit=@e.Id" title="ویرایش">@Html.Raw(Svg.Ic("pencil", "sm"))</a>
+                    <form method="post" asp-controller="Day" asp-action="Delete" class="inline-form js-confirm" data-confirm="حذف «@(e.Subject.Name) — @(string.IsNullOrEmpty(e.Note) ? Fa.Hm(e.Minutes) : e.Note)»؟">
+                        <input type="hidden" name="id" value="@e.Id" />
+                        <input type="hidden" name="date" value="@d" />
+                        <button class="btn icon danger" type="submit" title="حذف">@Html.Raw(Svg.Ic("trash", "sm"))</button>
+                    </form>
+                </span>
+                @{
+                    var details = new List<string>();
+                    if (e.StudyMin > 0) details.Add($"<span class=\"tag study\">خواندن {Fa.Hmc(e.StudyMin)}</span>");
+                    if (e.ReviewMin > 0) details.Add($"<span class=\"tag review\">مرور {Fa.Hmc(e.ReviewMin)}</span>");
+                    if (e.TestMin > 0) details.Add($"<span class=\"tag test\">تست {Fa.Hmc(e.TestMin)}</span>");
+                    if (e.Correct + e.Wrong > 0) details.Add($"<span class=\"tag\">{Fa.D(e.Correct)} درست • {Fa.D(e.Wrong)} غلط</span>");
+                }
+                @if (details.Count > 0)
+                {
+                    <span class="entry-sub" style="grid-column:2/-1;display:flex;gap:6px;flex-wrap:wrap">@Html.Raw(string.Join("", details))</span>
+                }
+            </div>
+        }
+    </div>
+    @if (Model.Entries.Count > 0)
+    {
+        <div class="summary">
+            <span class="stat">@Html.Raw(Svg.Ic("clock")) مطالعه <b>@Fa.Hm(Model.Total)</b></span>
+            <span class="stat">@Html.Raw(Svg.Ic("tests")) تست <b>@Fa.D(Model.Tests)</b></span>
+            <span class="stat">@Html.Raw(Svg.Ic("check")) انجام‌شده <b>@Fa.D(Model.Entries.Count(e => e.Done))/@Fa.D(Model.Entries.Count)</b></span>
+        </div>
+    }
+</div>
+
+<div class="card">
+    <div class="card-head">
+        <h2>@Html.Raw(Svg.Ic("note")) یادداشت روز</h2>
+        <span class="spacer"></span>
+        <span class="muted" id="noteHint">خودکار ذخیره می‌شود</span>
+    </div>
+    <textarea id="dayNote" class="input" rows="4" data-date="@d" placeholder="یادداشت این روز… (کارهای ناتمام، نکات مهم، برنامهٔ فردا و…)">@(Model.Note ?? "")</textarea>
+</div>
